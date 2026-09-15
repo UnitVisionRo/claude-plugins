@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "openapi": "mkdir -p app/generated/rest && curl -fsS http://localhost:8000/rest/openapi.json | python3 -c 'import json,sys; json.dump(json.load(sys.stdin), sys.stdout, indent=4); print()' > app/generated/rest/openapi.snapshot.json && openapi-ts",
+    "typecheck": "nuxt typecheck",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run"
+  }
+}

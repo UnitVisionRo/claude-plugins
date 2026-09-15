@@ -1,0 +1,89 @@
+{
+  "name": "bogdan-plugins",
+  "owner": {
+    "name": "Bogdan Coman",
+    "email": "bogdan.coman@unitvision.ro"
+  },
+  "metadata": {
+    "description": "Personal Claude Code plugins shared across Bogdan's projects.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "dev-workflow",
+      "source": "./dev-workflow",
+      "description": "Development workflow skills shared across projects: the spec-driven phase/chunk workflow, business-readable Git commit messages, and the discipline for writing progress back to an issue tracker.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Bogdan Coman"
+      },
+      "keywords": [
+        "git",
+        "commit-message",
+        "workflow",
+        "clickup",
+        "issue-tracker",
+        "spec",
+        "planning",
+        "review"
+      ],
+      "category": "workflow"
+    },
+    {
+      "name": "project-tooling",
+      "source": "./project-tooling",
+      "description": "Manually-invoked project tooling: run and screenshot the app, and audit uv (Python) or npm (frontend) dependencies for updates and breaking changes.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Bogdan Coman"
+      },
+      "keywords": [
+        "run",
+        "dev-server",
+        "screenshot",
+        "uv",
+        "npm",
+        "dependencies",
+        "updates",
+        "maintenance"
+      ],
+      "category": "workflow"
+    },
+    {
+      "name": "scaffold",
+      "source": "./scaffold",
+      "description": "Project scaffolders, enabled per-project when starting something new. Provides fastapi-nuxt-scaffold: a FastAPI async backend with multiple API surfaces plus a Nuxt 4 + Vuetify 4 frontend whose API layer is generated from the backend's OpenAPI schema.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Bogdan Coman"
+      },
+      "keywords": [
+        "scaffold",
+        "bootstrap",
+        "fastapi",
+        "nuxt",
+        "vuetify",
+        "openapi"
+      ],
+      "category": "workflow"
+    },
+    {
+      "name": "database",
+      "source": "./database",
+      "description": "Database schema and migration practice for FastAPI projects. Provides alembic: migration rules covering both the MySQL and PostgreSQL layouts in use.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Bogdan Coman"
+      },
+      "keywords": [
+        "alembic",
+        "migrations",
+        "sqlalchemy",
+        "mysql",
+        "postgresql",
+        "schema"
+      ],
+      "category": "workflow"
+    }
+  ]
+}

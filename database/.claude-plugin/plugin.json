@@ -1,0 +1,11 @@
+{
+  "name": "database",
+  "displayName": "Database",
+  "version": "0.1.0",
+  "description": "Database schema and migration practice for FastAPI projects. Provides alembic: migration rules covering both the MySQL and PostgreSQL layouts in use.",
+  "author": {
+    "name": "Bogdan Coman",
+    "email": "bogdan.coman@unitvision.ro"
+  },
+  "keywords": ["alembic", "migrations", "sqlalchemy", "mysql", "postgresql", "schema"]
+}

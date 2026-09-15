@@ -1,0 +1,11 @@
+# Append these lines to the .gitignore that `nuxi init` generates in gui/.
+# The OpenAPI snapshot is committed (it's what makes codegen reproducible/diff-reviewable);
+# everything openapi-ts generates FROM it is derived output and should not be.
+#
+# A bare `!app/generated/**/openapi.snapshot.json` negation does NOT work: git can't
+# re-include a file whose parent directories are themselves excluded by app/generated/** --
+# each intermediate directory needs its own un-ignore rule first.
+app/generated/**
+!app/generated/
+!app/generated/rest/
+!app/generated/rest/openapi.snapshot.json

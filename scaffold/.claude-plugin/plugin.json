@@ -1,0 +1,18 @@
+{
+  "name": "scaffold",
+  "displayName": "Scaffold",
+  "version": "0.1.0",
+  "description": "Project scaffolders, enabled per-project when starting something new. Provides fastapi-nuxt-scaffold: a FastAPI async backend with multiple API surfaces plus a Nuxt 4 + Vuetify 4 frontend whose API layer is generated from the backend's OpenAPI schema.",
+  "author": {
+    "name": "Bogdan Coman",
+    "email": "bogdan.coman@unitvision.ro"
+  },
+  "keywords": [
+    "scaffold",
+    "bootstrap",
+    "fastapi",
+    "nuxt",
+    "vuetify",
+    "openapi"
+  ]
+}
