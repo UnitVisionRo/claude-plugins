@@ -43,17 +43,18 @@
                       v-model="newPassword"
                       autocomplete="new-password"
                       class="mb-2"
-                      hint="At least 8 characters, with a lowercase and an uppercase letter, a digit and a symbol."
+                      :error-messages="issues.newPassword ? [issues.newPassword] : []"
+                      :hint="MESSAGES.password"
                       label="New password"
                       persistent-hint
-                      :rules="[required]"
+                      :rules="[required(), fieldRule(vPasswordResetRequest, 'newPassword', MESSAGES.password)]"
                       type="password"
                     />
                     <v-text-field
                       v-model="confirmPassword"
                       autocomplete="new-password"
                       label="Repeat password"
-                      :rules="[required, matches]"
+                      :rules="[required(), matches(() => newPassword)]"
                       type="password"
                     />
                   </v-card-text>
@@ -74,7 +75,10 @@
 
 <script setup lang="ts">
 import { checkRecoveryToken, resetPassword } from '~/generated/rest'
-import type { RecoveryTarget } from '~/generated/rest'
+import type { PasswordResetRequest, RecoveryTarget } from '~/generated/rest'
+import { vPasswordResetRequest } from '~/generated/rest/valibot.gen'
+import type { FieldIssues } from '~/utils/validation'
+import { MESSAGES, fieldRule, matches, required, validatePayload } from '~/utils/validation'
 
 definePageMeta({ layout: false })
 
@@ -90,8 +94,7 @@ const error = ref('')
 const busy = ref(false)
 const done = ref(false)
 
-const required = (value: string) => !!value || 'Required'
-const matches = (value: string) => value === newPassword.value || 'Passwords do not match'
+const issues = ref<FieldIssues<PasswordResetRequest>>({})
 
 // Check the link before showing the form, so an expired one says so immediately instead of
 // after the user has picked and typed a password twice.
@@ -109,17 +112,24 @@ onMounted(async () => {
 })
 
 async function submit() {
-    if (!newPassword.value || newPassword.value !== confirmPassword.value) return
     error.value = ''
+    const payload: PasswordResetRequest = {
+        recoveryToken: token.value,
+        newPassword: newPassword.value,
+        confirmPassword: confirmPassword.value,
+    }
+
+    const { ok, issues: found } = validatePayload(vPasswordResetRequest, payload)
+    issues.value = found
+    if (!ok) return
+    if (newPassword.value !== confirmPassword.value) {
+        issues.value = { confirmPassword: 'Passwords do not match' }
+        return
+    }
+
     busy.value = true
     try {
-        await resetPassword({
-            body: {
-                recoveryToken: token.value,
-                newPassword: newPassword.value,
-                confirmPassword: confirmPassword.value,
-            },
-        })
+        await resetPassword({ body: payload })
         done.value = true
     } catch (requestError) {
         // The complexity rule lives in `schemas/rest.py`; its message arrives here as a 422.

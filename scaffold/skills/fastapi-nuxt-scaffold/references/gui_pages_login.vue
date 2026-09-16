@@ -22,7 +22,7 @@
                       inputmode="numeric"
                       label="Verification code"
                       maxlength="6"
-                      :rules="[required, sixDigits]"
+                      :rules="[required(), fieldRule(vTwoFactorCode, 'code', MESSAGES.code)]"
                     />
                   </v-card-text>
                   <v-card-actions class="px-4 pb-4 d-flex flex-column ga-2 align-stretch">
@@ -60,7 +60,7 @@
                       autocomplete="username"
                       autofocus
                       label="Username or email"
-                      :rules="[required]"
+                      :rules="[required()]"
                     />
                   </v-card-text>
                   <v-card-actions class="px-4 pb-4 d-flex flex-column ga-2 align-stretch">
@@ -91,13 +91,13 @@
                       autofocus
                       class="mb-2"
                       label="Username"
-                      :rules="[required]"
+                      :rules="[required()]"
                     />
                     <v-text-field
                       v-model="password"
                       autocomplete="current-password"
                       label="Password"
-                      :rules="[required]"
+                      :rules="[required()]"
                       type="password"
                     />
                   </v-card-text>
@@ -116,7 +116,12 @@
 </template>
 
 <script setup lang="ts">
+import * as v from 'valibot'
+
 import { requestPasswordRecovery, resendTwoFactorCode } from '~/generated/rest'
+
+import { vTwoFactorCode } from '~/generated/rest/valibot.gen'
+import { MESSAGES, fieldRule, required } from '~/utils/validation'
 import { useAuthStore } from '~/stores/auth'
 
 // `layout: false` because the default layout is the signed-in chrome (nav bar, sign-out
@@ -142,8 +147,9 @@ let resendTimer: ReturnType<typeof setInterval> | null = null
 
 const isEmailMethod = computed(() => auth.pendingTwoFactor === 'EMAIL')
 
-const required = (value: string) => !!value || 'Required'
-const sixDigits = (value: string) => /^\d{6}$/.test((value ?? '').replace(/\s/g, '')) || 'Enter the 6-digit code'
+// Sign-in credentials carry only `required()`. Applying the username or password rules here
+// would reject a malformed guess before it reached the server, telling an attacker the shape
+// of both -- which is the same reason `LoginRequest` is unconstrained in `schemas/rest.py`.
 
 function startResendCountdown() {
     resendIn.value = RESEND_COOLDOWN_SECONDS
@@ -186,7 +192,9 @@ async function submitCredentials() {
 }
 
 async function submitCode() {
-    if (!/^\d{6}$/.test(code.value.replace(/\s/g, ''))) return
+    // The server normalises "123 456" before its own check, so accept it here too rather than
+    // blocking a code the user copied verbatim from their authenticator.
+    if (!v.safeParse(vTwoFactorCode, { code: code.value.replace(/\s/g, '') }).success) return
     error.value = ''
     busy.value = true
     try {

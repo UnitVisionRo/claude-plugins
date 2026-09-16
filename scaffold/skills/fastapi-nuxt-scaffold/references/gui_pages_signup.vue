@@ -36,31 +36,38 @@
                 <v-form @submit.prevent="submit">
                   <v-card-text>
                     <v-alert v-if="error" class="mb-4" density="compact" type="error" variant="tonal">{{ error }}</v-alert>
-                    <v-text-field v-model="form.name" class="mb-2" label="Full name" :rules="[required]" />
+                    <v-text-field
+                      v-model="form.name"
+                      class="mb-2"
+                      :error-messages="issues.name ? [issues.name] : []"
+                      label="Full name"
+                      :rules="[required(), fieldRule(vSignupRequest, 'name')]"
+                    />
                     <v-text-field
                       v-model="form.username"
                       autocomplete="username"
                       class="mb-2"
-                      :error-messages="usernameTaken ? 'That username is already taken' : []"
+                      :error-messages="usernameErrors"
                       label="Username"
                       :loading="checkingUsername"
-                      :rules="[required]"
+                      :rules="[required(), fieldRule(vSignupRequest, 'username', MESSAGES.username)]"
                     />
                     <v-text-field
                       v-model="form.password"
                       autocomplete="new-password"
                       class="mb-2"
-                      hint="At least 8 characters, with a lowercase and an uppercase letter, a digit and a symbol."
+                      :error-messages="issues.password ? [issues.password] : []"
+                      :hint="MESSAGES.password"
                       label="Password"
                       persistent-hint
-                      :rules="[required]"
+                      :rules="[required(), fieldRule(vSignupRequest, 'password', MESSAGES.password)]"
                       type="password"
                     />
                     <v-text-field
                       v-model="form.confirmPassword"
                       autocomplete="new-password"
                       label="Repeat password"
-                      :rules="[required, matchesPassword]"
+                      :rules="[required(), matches(() => form.password)]"
                       type="password"
                     />
                   </v-card-text>
@@ -79,7 +86,10 @@
 
 <script setup lang="ts">
 import { checkUsername, getInvite, signup } from '~/generated/rest'
-import type { InvitedUserResult } from '~/generated/rest'
+import type { InvitedUserResult, SignupRequest } from '~/generated/rest'
+import { vSignupRequest } from '~/generated/rest/valibot.gen'
+import type { FieldIssues } from '~/utils/validation'
+import { MESSAGES, fieldRule, matches, required, validatePayload } from '~/utils/validation'
 
 definePageMeta({ layout: false })
 
@@ -99,8 +109,12 @@ const usernameTaken = ref(false)
 const checkingUsername = ref(false)
 let usernameTimer: ReturnType<typeof setTimeout> | null = null
 
-const required = (value: string) => !!value || 'Required'
-const matchesPassword = (value: string) => value === form.password || 'Passwords do not match'
+const issues = ref<FieldIssues<SignupRequest>>({})
+
+const usernameErrors = computed(() => {
+    if (usernameTaken.value) return ['That username is already taken']
+    return issues.value.username ? [issues.value.username] : []
+})
 
 // The token identifies the invitation, so this is a public lookup -- resolving it is what
 // tells us whether the link in the email is still good, and gives the invitee's email to
@@ -140,11 +154,23 @@ onBeforeUnmount(() => {
 })
 
 async function submit() {
-    if (!form.name || !form.username || !form.password || form.password !== form.confirmPassword) return
     error.value = ''
+    const payload: SignupRequest = { ...form, inviteToken: token.value }
+
+    // One parse against the generated schema decides whether to send. The rules come from the
+    // backend, so this cannot disagree with what the server will accept -- except for the
+    // confirmation match, which no schema can express and which is checked alongside.
+    const { ok, issues: found } = validatePayload(vSignupRequest, payload)
+    issues.value = found
+    if (!ok) return
+    if (form.password !== form.confirmPassword) {
+        issues.value = { confirmPassword: 'Passwords do not match' }
+        return
+    }
+
     busy.value = true
     try {
-        await signup({ body: { ...form, inviteToken: token.value } })
+        await signup({ body: payload })
         done.value = true
     } catch (requestError) {
         // The password-complexity rule lives in `schemas/rest.py`, so its message arrives here

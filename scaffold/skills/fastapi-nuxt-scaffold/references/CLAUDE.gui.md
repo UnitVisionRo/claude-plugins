@@ -8,7 +8,9 @@ Scoped guidance for the frontend. Application-wide contracts live in the root `.
   components (`VTextField`/`VSelect`/`VDataTable`/`VBtn` etc.) configured via global `defaults`
   in `app/plugins/vuetify.ts` rather than hand-rolled CSS wrappers.
 - **Styling:** UnoCSS (`presetWind4` + `presetAttributify` + `presetIcons`).
-- **Validation:** Valibot (Standard Schema -> Vuetify `useRules`).
+- **Validation:** Valibot schemas GENERATED from the backend, adapted to Vuetify `:rules`
+  by `app/utils/validation.ts`. (Vuetify 4 has no Standard Schema support and no
+  `useRules` export, so the adapter is required -- it is three lines.)
 - **State:** Pinia.
 - **API codegen:** `@hey-api/openapi-ts` + the Valibot plugin -- typed client, TS types and
   Valibot schemas generated from the backend's `/rest` OpenAPI schema. `/api` is never
@@ -34,9 +36,20 @@ Scoped guidance for the frontend. Application-wide contracts live in the root `.
   visitors. Pass such things per call; `middleware/auth.global.ts` shows the pattern.
 - **Route guards are UX, not security.** The API enforces access (`routers/rest/deps.py`);
   the middleware only spares the user a screen of failed requests.
-- **Server-side validation is authoritative.** Form rules here are for fast feedback; rules
-  that exist only in `schemas/rest.py` (password complexity) reach the user through
-  `utils/apiError.ts` rather than being duplicated and left to drift.
+- **Never hand-write a validation rule.** They are generated: `api/schemas/rest.py` declares
+  constraints, OpenAPI carries them, and `app/generated/rest/valibot.gen.ts` compiles them into
+  real valibot schemas (`v.regex(...)`, `v.minLength(...)`, `v.email()`). Use
+  `fieldRule(vSignupRequest, 'password')` for a field and `validatePayload(schema, payload)`
+  before sending. Exactly three things are stated by hand, each for a reason `validation.ts`
+  documents: `required()` (a required string still generates as `v.string()`, which accepts
+  `''`), `matches()` (cross-field, invisible to JSON Schema), and the human wording in
+  `MESSAGES` (valibot's message for a regex is the regex).
+- **Validate once, at submit.** `validatePayload` parses the whole payload against the
+  generated schema and returns one issue per field. Do not also write a boolean "are the boxes
+  filled in" guard -- that restates the rules a third time and drifts.
+- **The server is still the authority.** Whatever slips past (uniqueness, cross-field,
+  anything behind a `model_validator`) comes back 422 and reaches the user through
+  `utils/apiError.ts`.
 
 ## Running & verifying
 ```bash

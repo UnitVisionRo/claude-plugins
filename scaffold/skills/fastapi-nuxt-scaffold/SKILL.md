@@ -142,6 +142,7 @@ sections, npm scripts) — never a dependency list.
       middleware/auth.global.ts     # from references/gui_middleware_auth.ts
       utils/
         apiError.ts                 # from references/gui_utils_apiError.ts
+        validation.ts               # from references/gui_utils_validation.ts
         routeAccess.ts              # from references/gui_utils_routeAccess.ts
         cookies.ts                  # from references/gui_utils_cookies.ts
       layouts/default.vue           # from references/gui_layouts_default.vue
@@ -215,6 +216,14 @@ Decisions worth knowing before you change anything:
   the visitor's token without replacing it. So SSR reaches *no verdict* in that case and
   `plugins/auth.client.ts` settles it after hydration — which is also why the public/protected
   rule lives in `utils/routeAccess.ts`, shared by the middleware and that plugin.
+- **Validation is declared once, in `api/schemas/rest.py`, and generated into the frontend.**
+  `Annotated[str, StringConstraints(pattern=...)]` becomes `v.regex(...)` in the generated
+  valibot schema, so the browser enforces the server's own rule without restating it. A
+  `field_validator` produces no JSON Schema and so becomes `v.string()` -- invisible to the
+  client. Two consequences worth remembering: `schemas/rest.py` sets
+  `regex_engine="python-re"` (Pydantic's default Rust engine rejects the look-ahead the
+  password rule needs), and input normalisation must use `mode="before"` so it runs ahead of
+  the constraint.
 - **One role per user** (`Role.ADMIN` / `Role.USER`). A real permission model is domain
   modelling for the app being built, not for the scaffold.
 - **The access token names the session that issued it** (a `did` claim), and
@@ -398,6 +407,13 @@ be checked by curl alone. In a browser:
   FastAPI instance with its own `dependency_overrides`; the parent's do not reach it. Override
   on `app.state.rest_app`, or the tests quietly run against the real development database and
   fail with nonsense like "incorrect username or password". `tests/conftest.py` does both.
+- **Writing a rule in a `field_validator` when a constraint would do.** It works, the tests
+  pass, and the frontend silently gets `v.string()` -- so the rule has to be typed out again in
+  the browser, where it can drift. Reach for `field_validator` only to normalise input
+  (`mode="before"`) or to compare fields (`model_validator`).
+- **Restating rules in a submit handler** (`if (!form.email || form.password.length < 8) return`).
+  That is a third copy, after the field rules and the server. One `validatePayload` against the
+  generated schema replaces it.
 - **Treating a valid JWT signature as a valid session.** Revocation (session revoke, logout,
   password reset) has to be visible to `get_current_user`, or it only takes effect whenever
   the access token happens to expire. The token carries a `did` claim and the dependency joins

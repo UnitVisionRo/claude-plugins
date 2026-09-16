@@ -17,7 +17,13 @@
 
             <v-row density="compact">
               <v-col cols="12" md="5">
-                <v-text-field v-model="form.email" label="Email" :rules="[required]" type="email" />
+                <v-text-field
+                  v-model="form.email"
+                  :error-messages="issues.email ? [issues.email] : []"
+                  label="Email"
+                  :rules="[required(), fieldRule(vInviteRequest, 'email')]"
+                  type="email"
+                />
               </v-col>
               <v-col cols="12" md="4">
                 <v-text-field v-model="form.name" label="Name (optional)" />
@@ -73,7 +79,10 @@
 
 <script setup lang="ts">
 import { inviteUser, listUsers, resendInvite } from '~/generated/rest'
-import type { Role, UserListItem } from '~/generated/rest'
+import type { InviteRequest, Role, UserListItem } from '~/generated/rest'
+import { vInviteRequest } from '~/generated/rest/valibot.gen'
+import type { FieldIssues } from '~/utils/validation'
+import { fieldRule, required, validatePayload } from '~/utils/validation'
 
 // The middleware reads this; the API enforces it for real (`require_admin`).
 definePageMeta({ requiresAdmin: true })
@@ -87,7 +96,7 @@ const lastInviteUrl = ref('')
 
 const form = reactive({ email: '', name: '', role: 'USER' as Role })
 
-const required = (value: string) => !!value || 'Required'
+const issues = ref<FieldIssues<InviteRequest>>({})
 
 async function load() {
     loading.value = true
@@ -103,14 +112,17 @@ async function load() {
 onMounted(load)
 
 async function submitInvite() {
-    if (!form.email) return
     error.value = ''
     lastInviteUrl.value = ''
+    const payload: InviteRequest = { email: form.email, role: form.role, name: form.name || null }
+
+    const { ok, issues: found } = validatePayload(vInviteRequest, payload)
+    issues.value = found
+    if (!ok) return
+
     inviting.value = true
     try {
-        const result = await inviteUser({
-            body: { email: form.email, role: form.role, name: form.name || null },
-        })
+        const result = await inviteUser({ body: payload })
         lastInviteUrl.value = result.inviteUrl
         form.email = ''
         form.name = ''

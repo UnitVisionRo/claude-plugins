@@ -168,6 +168,25 @@ async def test_totp_setup_then_two_phase_login(client: httpx.AsyncClient, db: As
     assert (await client.get(f"{REST}/auth/me")).status_code == 200
 
 
+async def test_a_code_copied_with_its_space_is_accepted(client: httpx.AsyncClient, db: AsyncSession) -> None:
+    """Authenticator apps render the code as "123 456", and people paste exactly that.
+
+    Normalisation therefore has to run BEFORE the `^\\d{6}$` constraint (`mode="before"` in
+    `schemas/rest.py`); at the default `mode="after"` the constraint sees the raw value and
+    rejects a code that is entirely correct.
+    """
+    await make_admin(db)
+    await login(client, "admin")
+    secret = await enrol_totp(client)
+    client.cookies.clear()
+
+    await login(client, "admin")
+    code = totp_code(secret, 1)
+    spaced = f"{code[:3]} {code[3:]}"
+    assert (await client.post(f"{REST}/auth/2fa/verify", json={"code": spaced})).status_code == 200
+    assert (await client.get(f"{REST}/auth/me")).status_code == 200
+
+
 async def test_totp_code_cannot_be_replayed(client: httpx.AsyncClient, db: AsyncSession) -> None:
     await make_admin(db)
     await login(client, "admin")
