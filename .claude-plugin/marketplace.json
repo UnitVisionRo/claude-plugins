@@ -65,7 +65,7 @@
         "vuetify",
         "openapi"
       ],
-      "category": "scaffold"
+      "category": "installer"
     },
     {
       "name": "database",
@@ -101,7 +101,7 @@
         "vuetify",
         "user-manual"
       ],
-      "category": "scaffold"
+      "category": "installer"
     }
   ]
 }
