@@ -15,14 +15,25 @@ Run everything from `api/` -- it is the import root (`from lib.database import .
 - `routers/<surface>/` -- one package per surface (`rest`, `api`): `__init__.py` exports
   `router`, `deps.py` holds that surface's auth dependency.
 - `lib/` -- general-purpose utilities & FastAPI dependencies: `database.py` (engine,
-  `async_session_factory`, `get_session`), `enums.py` (shared `StrEnum`s).
+  `async_session_factory`, `get_session`), `enums.py` (shared `StrEnum`s), `security.py`
+  (hashing, token fingerprints, JWTs, TOTP-secret encryption -- pure: no DB, no request),
+  `mail.py` (rendering + best-effort delivery), `utils.py`.
 - `models/` -- `base.py` defines `Base`/`TableBase` (BIGINT PK, `AsyncAttrs`) and `BaseEnum`
   (enum lookup tables); `enum_tables.py` registers `StrEnum -> table`. Import every model in
   `models/__init__.py` so Alembic autogenerate sees it.
 - `schemas/` -- Pydantic wire models, one module per surface.
 - `services/` -- reusable business logic; functions take the request `AsyncSession` as a
-  parameter (never open their own).
+  parameter (never open their own) and do not commit -- the router owns the transaction.
+  `auth.py` holds session lifecycle and two-factor policy, `invites.py` and `recovery.py` the
+  two emailed single-use flows, `tokens.py` the fingerprinted token issuing they share.
+- `scripts/seed.py` -- creates the first administrator (random password, printed once).
 - `migrations/` -- Alembic (async `env.py`; URL + metadata come from `lib.database` / `models`).
+
+## Tests
+`tests/conftest.py` runs against a real PostgreSQL (`TEST_DB_NAME`), not SQLite, and
+overrides `get_session` on `app.state.rest_app` as well as on `app` -- a mounted sub-app has
+its own `dependency_overrides` and does NOT inherit the parent's. Miss that and the tests
+quietly run against the development database.
 
 ## Database PKs
 Auto-incrementing BIGINT primary key (`id`, always the first column) on every real table.
@@ -58,7 +69,8 @@ bare CHECK: discoverable (`SELECT * FROM some_enum;`), easy to extend (insert a 
 uv sync
 uv run uvicorn main:app --reload
 uv run pytest
-uv run ruff check . && uv run ruff format --check . && uv run mypy .
+uv run ruff check . && uv run mypy .
+uv run python -m scripts.seed                       # first admin (or --reset-password)
 uv run alembic revision --autogenerate -m "<msg>"   # review before applying
 uv run alembic upgrade head
 ```

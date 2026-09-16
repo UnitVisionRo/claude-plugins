@@ -1,0 +1,14 @@
+{% extends "email/base.html" %}
+{% block title %}Your {{ appName }} verification code{% endblock %}
+{% block content %}
+  <p style="margin:0 0 12px 0;">Hello{% if userName %} {{ userName }}{% endif %},</p>
+  <p style="margin:0 0 20px 0;">Your verification code is:</p>
+  <p style="margin:0 0 20px 0; font-family:'Courier New',monospace; font-size:32px;
+            font-weight:bold; letter-spacing:6px; color:#1867c0;">{{ code }}</p>
+  <p style="margin:0 0 20px 0; color:#6b7280; font-size:13px;">
+    It expires in {{ expiryMinutes }} minutes and can be used once.
+  </p>
+  <p style="margin:0; color:#6b7280; font-size:13px;">
+    If you did not try to sign in, change your password -- someone else may know it.
+  </p>
+{% endblock %}

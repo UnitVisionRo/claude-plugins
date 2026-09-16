@@ -1,10 +1,10 @@
 """StrEnum -> lookup-table registry.
 
-Add a concrete `BaseEnum` subclass per enum (see `models/base.py` docstring),
-plus its `StrEnum` in `lib/enums.py`, then extend `ENUM_TABLES` below. A
-migration seeds the table with the SAME literal values (a migration is an
-immutable point-in-time fact -- never import the live enum into one). Tests
-seed from the live `StrEnum` via `seed_enum_tables()` after `create_all`.
+Add a concrete `BaseEnum` subclass per enum (see `models/base.py` docstring), plus its
+`StrEnum` in `lib/enums.py`, then extend `ENUM_TABLES` below. A migration seeds the table
+with the SAME literal values (a migration is an immutable point-in-time fact -- never import
+the live enum into one). Tests seed from the live `StrEnum` via `seed_enum_tables()` after
+`create_all`.
 """
 
 from __future__ import annotations
@@ -13,9 +13,22 @@ from enum import Enum
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from lib.enums import Role, TwoFactorMethod
 from models.base import BaseEnum
 
-ENUM_TABLES: dict[type[Enum], type[BaseEnum]] = {}
+
+class RoleTable(BaseEnum):
+    __tablename__ = "role"
+
+
+class TwoFactorMethodTable(BaseEnum):
+    __tablename__ = "two_factor_method"
+
+
+ENUM_TABLES: dict[type[Enum], type[BaseEnum]] = {
+    Role: RoleTable,
+    TwoFactorMethod: TwoFactorMethodTable,
+}
 
 
 async def seed_enum_tables(session: AsyncSession) -> None:

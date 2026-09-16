@@ -34,14 +34,15 @@ Usage once you have a real enum:
     )
 """
 
-from uuid import UUID, uuid4
 from datetime import datetime
+from uuid import UUID, uuid4
 
 from sqlalchemy import BigInteger, CheckConstraint, DateTime, Uuid
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from lib.utils import utcnow
+
 
 class Base(AsyncAttrs, DeclarativeBase):
     pass

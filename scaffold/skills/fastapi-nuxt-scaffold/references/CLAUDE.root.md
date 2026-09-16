@@ -11,9 +11,10 @@ Each API surface is its own FastAPI sub-app with its own OpenAPI schema (`/rest/
 client from the `/rest` schema via `@hey-api/openapi-ts` -- no hand-maintained API types, no drift.
 
 ## API surfaces (grouped by consumer)
-- **`/rest`** -- the browser-facing console (`gui/`). CORS locked to the frontend origin(s).
-  No auth is wired yet in the scaffold -- add real auth (session cookie, OIDC, etc.) before
-  this goes anywhere near production.
+- **`/rest`** -- the browser-facing console (`gui/`). CORS locked to the frontend origin(s),
+  with credentials allowed. Authenticated by an httpOnly session cookie (JWT) with a rotating
+  refresh token, optionally behind two-factor auth; the dependency is in
+  `api/routers/rest/deps.py`. Access is invite-only -- there is no public sign-up.
 - **`/api`** -- server-to-server integrations. CORS open (a browser is never the caller);
   guarded by an API-key header instead. The placeholder check is a static key list in
   settings -- replace with a scoped/rotatable DB-backed model when you need real key management.
@@ -21,6 +22,17 @@ client from the `/rest` schema via `@hey-api/openapi-ts` -- no hand-maintained A
 Never cross the streams: the GUI only calls `/rest`; an integration only calls `/api`. If a
 route is genuinely needed on both surfaces, implement it separately on each with its own auth
 dependency and OpenAPI schema, sharing logic via a `services/` function.
+
+## Authentication
+The session is an httpOnly cookie, never a token in JavaScript. Endpoints depend on
+`routers/rest/deps.py`'s `CurrentUser` / `AdminUser`; the frontend's route middleware is a
+convenience for the user, never the boundary. The access token names the session that issued
+it, and that dependency joins against a live `user_sessions` row -- so revoking a session,
+logging out, or resetting a password takes effect on the next request rather than whenever the
+token would have expired. Secrets are stored in the weakest form that
+still works: Argon2 for passwords, keyed HMAC fingerprints for refresh and invite tokens,
+and reversible Fernet encryption only for TOTP secrets, which must be readable to verify a
+code.
 
 ## Coding style
 - Indentation: 4 spaces. Line length: 120 characters.

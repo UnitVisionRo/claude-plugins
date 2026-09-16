@@ -1,4 +1,6 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    """The only way this app gets "now": aware UTC (root CLAUDE.md)."""
+    return datetime.now(UTC)

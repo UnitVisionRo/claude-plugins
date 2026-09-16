@@ -16,6 +16,15 @@ export default defineNuxtConfig({
     build: {
         transpile: ['vuetify'],
     },
+    runtimeConfig: {
+        public: {
+            // Where the generated client sends requests. Overridable at runtime with
+            // NUXT_PUBLIC_API_BASE_URL, so one build can serve several environments.
+            // Note this URL is used by the browser AND by Nuxt's own server during SSR; if a
+            // deployment puts the API on a different internal address, split it in two.
+            apiBaseUrl: 'http://localhost:8000/rest',
+        },
+    },
     vite: {
         vue: {
             template: {
