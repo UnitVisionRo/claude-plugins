@@ -16,6 +16,39 @@ export default defineNuxtConfig({
     build: {
         transpile: ['vuetify'],
     },
+    app: {
+        head: {
+            title: '__APP_NAME__',
+            // The manifest + icons below are what make the app installable ("Install app" in
+            // Chrome/Edge, "Add to Home Screen" on iOS). There is deliberately no service
+            // worker, so there is no offline mode -- installed, the app is the same online-only
+            // app in its own window.
+            link: [
+                // nuxi ships public/favicon.ico; these are the additional PWA entries.
+                {
+                    // iOS ignores the manifest's icons for "Add to Home Screen" and only looks
+                    // at this link (or /apple-touch-icon.png at the origin root), so it has to
+                    // be declared explicitly even though the manifest lists icons already.
+                    rel: 'apple-touch-icon',
+                    sizes: '180x180',
+                    href: '/apple-touch-icon.png',
+                },
+                { rel: 'manifest', href: '/manifest.webmanifest' },
+            ],
+            meta: [
+                // Keep in sync with the manifest's theme_color and the app bar's colour.
+                { name: 'theme-color', content: '#1867C0' },
+            ],
+        },
+    },
+    experimental: {
+        // How often an open tab polls /_nuxt/builds/latest.json for a newer build id, which is
+        // what raises app/components/AppUpdatePrompt.vue. Nuxt's default is one hour, and the
+        // check is a plain setTimeout chain -- navigating between routes does NOT trigger one --
+        // so this interval alone bounds how long a tab can sit on a superseded build.
+        // (`experimental.appManifest`, which powers this, is already on by default.)
+        checkOutdatedBuildInterval: 1000 * 60 * 15,
+    },
     runtimeConfig: {
         public: {
             // Where the generated client sends requests. Overridable at runtime with

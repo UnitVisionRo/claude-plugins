@@ -19,6 +19,14 @@ Scoped guidance for the frontend. Application-wide contracts live in the root `.
   so every SDK call resolves to the response body and throws on a non-2xx.
 - **Auth:** httpOnly cookie session; `stores/auth.ts` + `middleware/auth.global.ts`. The
   middleware denies by default -- a new page is protected unless its path is listed public.
+- **Installable, no service worker.** `public/manifest.webmanifest` + the icons + the
+  `app.head` links in `nuxt.config.ts` are the whole of it, so the browser's install action and
+  iOS "Add to Home Screen" give a windowed app -- but there is no offline mode and no
+  service-worker update flow. New builds are picked up instead by Nuxt's build-manifest poll
+  (`experimental.checkOutdatedBuildInterval`, 15 min), which raises
+  `components/AppUpdatePrompt.vue`. That component's file comment explains why it is a
+  persistent snackbar and not a dialog; read it before changing either piece. The `public/*.png`
+  icons are placeholders.
 
 ## Conventions
 - **Functions are camelCase, not snake_case** -- the root's snake_case rule scopes to Python;

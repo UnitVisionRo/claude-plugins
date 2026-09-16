@@ -132,8 +132,17 @@ sections, npm scripts) — never a dependency list.
     .gitignore                    # nuxi-generated, appended per references/gitignore.gui-additions
     package.json                  # nuxi-generated + npm install'd deps; "scripts" merged from
                                    # references/package-scripts.json; "name" renamed to appName
+    public/
+      manifest.webmanifest        # from references/public_manifest.webmanifest
+      apple-touch-icon.png        # from references/pwa_icons/ -- PLACEHOLDERS, meant to be replaced
+      web-app-manifest-192x192.png
+      web-app-manifest-512x512.png
+      web-app-manifest-maskable-512x512.png
+      favicon.ico                 # nuxi-generated if present, left alone
     app/
       app.vue                      # from references/app.vue
+      components/
+        AppUpdatePrompt.vue         # from references/gui_components_app_update_prompt.vue
       plugins/
         vuetify.ts                  # from references/vuetify-plugin.ts
         api.ts                      # from references/gui_plugins_api.ts
@@ -340,6 +349,11 @@ Decisions worth knowing before you change anything:
    - Append `references/gitignore.gui-additions`'s contents to the `nuxi`-generated
      `gui/.gitignore` (see the comment in that reference file — git needs each intermediate
      directory re-included, not just the snapshot file).
+   - **Install files** (this is what makes the app installable — see "Installability and the
+     update prompt" below): `mkdir -p gui/public`, then copy
+     `references/public_manifest.webmanifest` to `gui/public/manifest.webmanifest` and all
+     four PNGs from `references/pwa_icons/` into `gui/public/`. Do NOT touch
+     `gui/public/favicon.ico` if `nuxi` created one.
 
 10. **Generate the API client.** Start the backend (`cd api && uv run uvicorn main:app`), then
     from `gui/`: `npm run openapi`. This snapshots `/rest/openapi.json` and generates the
@@ -347,7 +361,38 @@ Decisions worth knowing before you change anything:
     `typecheck` — until it does, every `~/generated/rest` import is unresolved.
 
 11. **Fill in the root `CLAUDE.md`'s** one-line "what this is" placeholder once the app's
-    actual purpose is known.
+    actual purpose is known. Add the same one-liner to `gui/public/manifest.webmanifest` as a
+    `"description"` key — some install prompts show it.
+
+## Installability and the update prompt
+
+The scaffolded app is installable and tells an open tab when it has been superseded. Both are
+plain web-platform wiring, not a module:
+
+- **Installable, no service worker.** `gui/public/manifest.webmanifest` plus the icons and the
+  `app.head` links in `nuxt.config.ts` are the whole of it. The browser's own install action
+  ("Install app" in Chrome/Edge, "Add to Home Screen" on iOS) gives the user a windowed,
+  icon-on-the-homescreen app. There is **no offline capability and no service-worker update
+  flow** — installed, it is the same online-only app in its own window. Adding a service worker
+  later is a deliberate decision, not an oversight; think about the httpOnly session cookie
+  before caching anything.
+- **The icons are placeholders.** Four flat blue squares with a white disc, in the Vuetify
+  default primary (`#1867C0`). Replace them with real artwork, keeping the filenames, sizes and
+  the maskable one's safe zone (its art must sit inside the central 40%). If the brand colour
+  changes, `theme_color` in the manifest, the `theme-color` meta in `nuxt.config.ts` and the
+  Vuetify theme all have to move together.
+- **Update detection is Nuxt's, the prompt is ours.** `experimental.appManifest` (on by
+  default) makes the client poll `/_nuxt/builds/latest.json` and fire `app:manifest:update`
+  when the deployed build id stops matching the running one.
+  `app/components/AppUpdatePrompt.vue` turns that into a persistent snackbar with a Reload
+  button. Two things about Nuxt's plugin drive that component's shape, and both are documented
+  in it: the poll is a bare `setTimeout` chain, so **a route navigation never triggers a
+  check** — `checkOutdatedBuildInterval` (set to 15 minutes here, down from Nuxt's one hour) is
+  the only bound on staleness — and the hook fires **at most once per tab**, because Nuxt
+  clears its own timer as soon as it reports a mismatch. Hence a snackbar that stays put rather
+  than a dismissible dialog: a dismissed notice would never come back.
+- In dev, restarting `npm run dev` mints a new build id, so an open tab pops the update prompt.
+  That is the mechanism working.
 
 ## Verification
 
@@ -369,6 +414,15 @@ Don't report the scaffold as done until all of these pass:
   redirect.
 - `npm run typecheck` and `npm run lint` clean.
 - `npm run openapi` succeeds against the running backend and regenerates the client.
+- **Install wiring**, against a production build (`npm run build && npm run preview`, the dev
+  server does not emit a build manifest):
+  ```bash
+  curl -sI localhost:3000/manifest.webmanifest        # 200; no __APP_NAME__ left in the body
+  curl -s  localhost:3000/_nuxt/builds/latest.json    # {"id":"...","timestamp":...}
+  curl -sI localhost:3000/web-app-manifest-512x512.png # 200, image/png
+  ```
+  Then in the browser: DevTools → Application → Manifest shows the name and all three icons with
+  no errors, and the browser offers to install the app.
 
 **The flow itself** — this is the part that actually proves the scaffold works, and it cannot
 be checked by curl alone. In a browser:
