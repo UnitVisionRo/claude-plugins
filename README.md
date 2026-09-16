@@ -9,7 +9,7 @@ installing, not the repository name.
 
 ## At a glance
 
-**4 plugins, 8 skills.** Skills are invoked as `<plugin>:<skill>`. "Always-on" is what a
+**5 plugins, 9 skills.** Skills are invoked as `<plugin>:<skill>`. "Always-on" is what a
 plugin's descriptions cost in *every* session; "on invoke" is paid only when a skill fires.
 
 | plugin | skill | fires | always-on | on invoke |
@@ -22,10 +22,12 @@ plugin's descriptions cost in *every* session; "on invoke" is paid only when a s
 | | `check-updates-uv` | `/check-updates-uv` | ~60 | ~650 |
 | **`database`** | `alembic` | automatically | ~80 | ~1.7k |
 | **`scaffold`** | `fastapi-nuxt-scaffold` | `/fastapi-nuxt-scaffold` | ~140 | ~5.3k |
+| **`help-docs`** | `install-help-docs` | `/install-help-docs` | ~90 | ~2.3k |
 
-All four enabled costs roughly **710 tokens** in every session — `dev-workflow` ~259,
-`project-tooling` ~230, `scaffold` ~139, `database` ~81. Disable what a project does not need;
-`scaffold` is the usual candidate, since a project is scaffolded once and then never again.
+All five enabled costs roughly **800 tokens** in every session — `dev-workflow` ~259,
+`project-tooling` ~230, `scaffold` ~139, `help-docs` ~90, `database` ~81. Disable what a project
+does not need; `scaffold` and `help-docs` are the usual candidates, since both do their work
+once and then never again.
 
 ## Install
 
@@ -38,6 +40,7 @@ claude plugin install dev-workflow@bogdan-plugins
 claude plugin install project-tooling@bogdan-plugins
 claude plugin install database@bogdan-plugins
 claude plugin install scaffold@bogdan-plugins
+claude plugin install help-docs@bogdan-plugins
 ```
 
 Use the **SSH** URL while the repository is private — it reuses the SSH key you already push
@@ -111,6 +114,16 @@ The two dependency checkers are **slash-commands only** (`/check-updates-uv`,
 
 Enable it when starting a project; disable it afterwards — it is the heaviest plugin here and
 a project only gets scaffolded once.
+
+### `help-docs` — user-facing documentation inside the app
+
+| skill | |
+|---|---|
+| `install-help-docs` | Install a Markdown-sourced help system into a Nuxt + Vuetify app: `docs/help/*.md` compiled at build time, a Help button giving contextual help per page, a searchable `/help` browser, and an authoring skill written into the app's own `.claude/skills/`. |
+
+Slash-command only (`/install-help-docs`). Like `scaffold`, enable it for the install and
+disable it afterwards — the documentation is then maintained through the skill it leaves behind
+in the app.
 
 ## Updating
 

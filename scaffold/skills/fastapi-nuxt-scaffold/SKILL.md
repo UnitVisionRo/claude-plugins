@@ -387,6 +387,14 @@ be checked by curl alone. In a browser:
 10. `/account` → "Where you are signed in" lists this browser and any others. Signing another
     one out makes it land back on `/login` on its **next request**, not half an hour later.
 
+## Optional: in-app help documentation
+
+The `help-docs` plugin (`/install-help-docs`) adds user-facing documentation to the scaffolded
+app: Markdown in `docs/help/`, compiled at build time, with a Help button in the app bar giving
+contextual help per page and a searchable `/help` browser. It is a separate plugin because it
+is not specific to this scaffold — but it installs cleanly onto it, and the layout and lint
+configuration this skill produces are exactly what its steps expect.
+
 ## Common mistakes
 
 **Scaffolding**

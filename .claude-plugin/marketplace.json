@@ -84,6 +84,24 @@
         "schema"
       ],
       "category": "workflow"
+    },
+    {
+      "name": "help-docs",
+      "source": "./help-docs",
+      "description": "Installs in-app user help documentation into a Nuxt + Vuetify application: Markdown in docs/help compiled at build time, contextual help per page, a searchable topic browser, and an authoring skill written into the app itself.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Bogdan Coman"
+      },
+      "keywords": [
+        "help",
+        "documentation",
+        "markdown",
+        "nuxt",
+        "vuetify",
+        "user-manual"
+      ],
+      "category": "workflow"
     }
   ]
 }
