@@ -40,13 +40,23 @@ Throughout this skill, `<BACK_PORT>` and `<FRONT_PORT>` mean the values you just
 
 ## Secrets
 
-Login credentials, SSL keyfile/certfile paths and DB connection parameters live in the
-gitignored **`.claude/.secrets`** at the repo root. Read it when you need to log in or to
-locate the certs.
+Login credentials, SSL keyfile/certfile paths and DB connection parameters live in a gitignored
+file. Look for them in this order, and stop at the first that answers:
 
-**Never print, echo or copy its values** into chat, code, docs or commits. Refer to keys by
-name and purpose only. If a value you need is missing, say which key is absent — never invent
-one.
+1. **`.claude/.secrets`** at the repo root — the preferred location, with keys like `login`,
+   `password`, `ssl-keyfile`, `ssl-certfile` and a `db` block.
+2. **The backend's `.env`** (`back/.env` or `api/.env`) — some projects keep DB credentials
+   only here. **Do not read it.** You do not need to: the backend loads it itself, and
+   `/health/db` confirms the DB is reachable without you ever handling a credential. Name the
+   file and the missing key if something is absent, nothing more.
+3. **The conventional cert location** — when neither file records `ssl-keyfile` /
+   `ssl-certfile`, the localhost dev certs on this machine are
+   `/home/bogdan/certs/localhost-key.pem` and `/home/bogdan/certs/localhost-cert.pem`.
+   `.vscode/launch.json` also carries them as `--ssl-keyfile` / `--ssl-certfile` args.
+
+**Never print, echo or copy any of these values** into chat, code, docs or commits. Refer to
+keys by name and purpose only. If a value you need is missing, say which key is absent —
+never invent one.
 
 ## Build (install deps)
 
@@ -66,7 +76,7 @@ it does not start the Nuxt dev server. That still has to be started separately.
 
 ## Start the backend
 
-Confirm it is not already running. Cert paths come from `.claude/.secrets`:
+Confirm it is not already running. Cert paths come from the Secrets section above:
 
 ```bash
 cd <backend>
@@ -196,7 +206,7 @@ for port in <FRONT_PORT> <BACK_PORT>; do kill $(lsof -ti tcp:$port) 2>/dev/null;
 - **API calls 401/CORS-fail** — the backend's `base_url` setting must match the browser origin
   (`https://localhost:<FRONT_PORT>`).
 - **`/health/db` hangs or errors** — Postgres/MySQL isn't running, or the project's database is
-  unreachable. Check the DB block in `.claude/.secrets` and that the server is up.
+  unreachable. Check the DB settings (see Secrets) and that the server is up.
 - **Frontend never serves** — read its log in `/tmp/`; a port clash is the usual cause
   (`lsof -ti tcp:<FRONT_PORT>`).
 - **Driver prints `FAILED: <route> (no PNG written)`** — usually leftover headless Edge holding

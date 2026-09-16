@@ -18,13 +18,20 @@ When `superpowers` is loaded, the rules below win. Where they are silent, follow
 |---|---|---|
 | Review granularity | `subagent-driven-development`: launch a reviewer subagent per **task** | Review **per chunk**, never per task. There are exactly **two** review layers — see Self review rules. |
 | Committing during work | Several skills commit as they go (`brainstorming` commits the design doc; `executing-plans` and `finishing-a-development-branch` commit progress) | **Never commit** except where this workflow explicitly allows it, and never without the user's instruction — see Commit rules. |
-| Design docs | `brainstorming`: write to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit it | Specs live in **`docs/spec/<YY-MM-DD>-<feature_name>/`** and are **not** committed on the skill's own initiative. |
+| Design docs | `brainstorming`: write to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit it | Specs live where **the project's `CLAUDE.md`** says (see Spec and plan file locations) and are **not** committed on the skill's own initiative. |
 | Finishing a branch | `finishing-a-development-branch` decides how to integrate | The phase ends at **STEP 5**; integration is the user's call. |
 
 Skills this workflow **does** invoke, unchanged: `/superpowers:writing-plans` (STEP 1) and
 `/superpowers:subagent-driven-development` (STEP 2a, minus its per-task review).
 
 ## Spec and plan file locations
+
+**The parent directory varies by project — the project's `CLAUDE.md` names it, and it wins.**
+Check there before creating a spec or a plan; several projects use `specs/` at the repo root
+rather than `docs/spec/`, and some keep plans in a sibling tree instead of under the spec.
+Never create a new spec directory on the strength of this skill alone.
+
+When the project says nothing, use this shape:
 
 - **Functional spec**: `docs/spec/<YY-MM-DD>-<feature_name>/` — the source of truth for the
   platform's behavior. If the feature needs only a single file, name it
@@ -33,6 +40,9 @@ Skills this workflow **does** invoke, unchanged: `/superpowers:writing-plans` (S
   feature, derived from the spec. Kind of like a "compiler" for the spec: it translates the
   spec into a concrete, actionable plan for implementation. Each plan is **phase-specific** and
   may be broken into multiple chunks, each with its own independently testable deliverable.
+
+The `<YY-MM-DD>-<feature_name>` naming applies wherever the parent lives. Whether plans are
+committed is also per-project — some treat them as ephemeral and never commit them.
 
 ## Spec-grounded features
 

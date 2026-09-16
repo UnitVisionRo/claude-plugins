@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugins shared across Bogdan's projects.",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "plugins": [
     {
       "name": "dev-workflow",
       "source": "./dev-workflow",
       "description": "Development workflow skills shared across projects: the spec-driven phase/chunk workflow, business-readable Git commit messages, and the discipline for writing progress back to an issue tracker.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Bogdan Coman"
       },
@@ -33,7 +33,7 @@
       "name": "project-tooling",
       "source": "./project-tooling",
       "description": "Manually-invoked project tooling: run and screenshot the app, and audit uv (Python) or npm (frontend) dependencies for updates and breaking changes.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Bogdan Coman"
       },

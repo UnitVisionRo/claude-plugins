@@ -1,7 +1,7 @@
 {
   "name": "project-tooling",
   "displayName": "Project Tooling",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Manually-invoked project tooling: run and screenshot the app, and audit uv (Python) or npm (frontend) dependencies for updates and breaking changes.",
   "author": {
     "name": "Bogdan Coman",
