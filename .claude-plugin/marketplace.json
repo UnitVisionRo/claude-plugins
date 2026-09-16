@@ -47,7 +47,7 @@
         "updates",
         "maintenance"
       ],
-      "category": "workflow"
+      "category": "tools"
     },
     {
       "name": "scaffold",
@@ -65,7 +65,7 @@
         "vuetify",
         "openapi"
       ],
-      "category": "workflow"
+      "category": "scaffold"
     },
     {
       "name": "database",
@@ -83,7 +83,7 @@
         "postgresql",
         "schema"
       ],
-      "category": "workflow"
+      "category": "database"
     },
     {
       "name": "help-docs",
@@ -101,7 +101,7 @@
         "vuetify",
         "user-manual"
       ],
-      "category": "workflow"
+      "category": "scaffold"
     }
   ]
 }
