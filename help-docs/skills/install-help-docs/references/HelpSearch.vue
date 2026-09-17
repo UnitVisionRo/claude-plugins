@@ -1,4 +1,4 @@
-<!-- Destination: <nuxtDir>/<srcDir>/components/help/HelpSearch.vue -->
+<!-- Destination: <appSrc>/components/help/HelpSearch.vue -->
 <template>
     <!-- The field stays put at the top and only the list below it scrolls: no `position: sticky`
          here, which would let content show through beside the field. -->

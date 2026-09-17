@@ -1,4 +1,4 @@
-<!-- Destination: <nuxtDir>/<srcDir>/components/help/HelpTopicList.vue -->
+<!-- Destination: <appSrc>/components/help/HelpTopicList.vue -->
 <template>
     <v-list density="compact" nav>
         <template v-for="(group, index) in groups" :key="group.group ?? index">

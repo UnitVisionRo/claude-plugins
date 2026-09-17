@@ -1,4 +1,4 @@
-// Destination: <nuxtDir>/modules/help-docs.js
+// Destination: <appRoot>/modules/help-docs.js
 import { watch } from 'node:fs'
 import { generateHelpDocs, HELP_SOURCE_DIR } from '../scripts/generate-help.mjs'
 

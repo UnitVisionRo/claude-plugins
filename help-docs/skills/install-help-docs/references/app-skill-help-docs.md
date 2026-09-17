@@ -15,10 +15,12 @@ edited by developers.
 |---|---|---|
 | The documents (source) | `docs/help/*.md` | **YES** — this is where you work |
 | Developer notes | `docs/help/_*.md` (`_` prefix) | yes; the generator ignores them |
-| Generated output | `<srcDir>/help/generated/` | **NO, never** (not in git either) |
-| The generator | `<nuxtDir>/scripts/generate-help.mjs` | only when changing the mechanism |
-| Automatic run | `<nuxtDir>/modules/help-docs.js` | only when changing the mechanism |
-| The UI | `<srcDir>/pages/help.vue`, `<srcDir>/pages/help/[[slug]].vue`, `<srcDir>/components/help/` | only for UI changes |
+| Screenshots | `docs/screenshots/` | added through the capture script, not by hand |
+| Module declarations | `docs/help/modules.json` | yes, when adding an optional module |
+| Generated output | `<generated output>` | **NO, never** (not in git either) |
+| The generator | `<generator>` | only when changing the mechanism |
+| Automatic run | `<build hook>` | only when changing the mechanism |
+| The UI | `<help page and components>` | only for UI changes |
 
 ## Procedure
 
@@ -26,15 +28,15 @@ edited by developers.
    screenshot too; if one does not exist yet, **produce it** — see [Screenshots](#screenshots).
 2. Run the check:
    ```bash
-   cd <nuxtDir> && npm run help:generate
+   <generate command>
    ```
 3. If it reports an error, **fix it** — do not commit a broken document. The message names the
    exact file and cause (missing title, broken link, non-existent section, invalid file name).
 4. Commit only the file in `docs/help/` (and any new screenshot). The generated output lives in
-   `<srcDir>/help/generated/` and is **not** kept in git — it is produced on every build.
+   `<generated output>` and is **not** kept in git — it is produced on every build.
 
-Generation runs automatically before `npm run dev` and `npm run build`, and on every save of a
-document while the dev server is running. An invalid document **stops the build** (in
+Generation runs automatically before the dev server starts and before a production build, and on
+every save of a document while the dev server is running. An invalid document **stops the build** (in
 development it only warns, so a running server does not die).
 
 ## File name
@@ -73,8 +75,8 @@ The most specific match wins, and a route also covers its sub-pages: `/clients` 
 `/clients/staff`, while `/reports/daily` takes precedence over `/reports` for the daily report
 page. If no route matches, the dialog shows the list of topics instead.
 
-Use the real paths from the application (`<srcDir>/pages/`), without parameters: `/client` also
-covers `/client/12`.
+Use the real paths from the application, as the router defines them, without parameters:
+`/client` also covers `/client/12`.
 
 `/` is the root page only — it does **not** act as a catch-all for every page, because a route
 covers its sub-pages through the `/` separator (`/` plus `/` is `//`, which matches nothing). A
@@ -135,6 +137,64 @@ Headings, lists, **bold**, _italic_, tables, quotes, horizontal rules, `code`. R
 links.
 
 Use the level-1 heading only for the document title; the rest of the structure starts at `##`.
+
+## Optional modules
+
+Some applications have parts a given deployment may not have — a module that is licensed
+separately, a feature switched off by a setting. Documentation for those parts can be marked, so
+it is shown only where the part exists. A reader is never told about a screen they do not have.
+
+**Do not reach for this by default.** Most documents describe things everyone has, and an
+unmarked document is visible to everyone. Mark content only when the application genuinely
+varies.
+
+### Declaring a module
+
+Every module name is declared once, in `docs/help/modules.json`:
+
+```json
+["gdpr"]
+```
+
+The name is yours to choose, but it must already be wired up in the application — each declared
+module needs a matching rule there that says when it is on. Adding a name here without that rule
+means its content is never shown. Using a name in a document without declaring it here **stops
+generation**, which is deliberate: a typo would otherwise hide a document silently.
+
+### Marking a whole document
+
+```markdown
+---
+title: GDPR requests
+module: gdpr
+---
+```
+
+The document then disappears entirely when the module is off — from the topic list, from search,
+and from contextual help.
+
+### Marking part of a document
+
+```markdown
+:::module gdpr
+This paragraph, and any heading inside the block, appear only when the GDPR module is on.
+:::
+```
+
+The rest of the document stays visible. A heading inside the block disappears from the outline
+along with its text. Blocks cannot be nested.
+
+### The rules
+
+- **A link into marked content must be marked the same way.** Linking to a section that lives
+  inside `:::module gdpr` stops generation unless your link is also inside a `:::module gdpr`
+  block, or your whole document is marked `module: gdpr`. Without this rule, switching the module
+  off would leave a link to a section nobody can reach.
+- **A tab's help document cannot belong to a module.** Tabs are always visible, so their help
+  must be too.
+- **Hidden is not private.** Hidden content is still in the application people download; it is
+  simply not displayed. Anyone who looks can read it. Use modules to keep documentation
+  *relevant*, never to keep it *secret* — nothing confidential goes in a document, marked or not.
 
 ## What a document must cover
 
@@ -198,15 +258,95 @@ A screenshot is written as a Markdown image, **alone in its paragraph**, with a 
   a single folder.
 
 The generator checks every image as strictly as a link, copies it into the generated folder and
-imports it into the bundle, so the final address (with hash and base URL) is given by Vite. In
+imports it into the bundle, so the final address (with its hash and base URL) is given by the
+build. In
 the application the image appears framed, with the caption underneath, at the available width.
 On GitHub and in editors the same relative path shows the image straight from the `.md`.
 
 ### Where screenshots come from
 
-Take screenshots from a **demo or development instance whose data is invented** — never from
-production, and never from a database that may hold real customer data. A screenshot is a
+Screenshots are taken **only on the demo instance**: a separate installation, with its own
+database, populated with invented data. **Never** on the working development database — it holds
+random test data and may hold real data — and **never** on production. A screenshot is a
 published document: whatever is on screen goes with it.
 
-Capture at a consistent window size (1280×800 is a reasonable default) so the images look like a
-set, and crop to the region the text is talking about rather than showing the whole desktop.
+They are never taken by hand. `docs/screenshots/capture.mjs` drives the application in a browser
+and writes every PNG, so a screenshot can be retaken when the interface changes. A hand-taken
+screenshot cannot, which is how documentation starts lying. The window size, locale and theme
+are set once at the top of that file, so the images look like a set.
+
+### Procedure for producing a screenshot
+
+<!-- INSTALLER: fill in every <placeholder> below by asking how a throwaway instance of this
+     application is built, seeded and torn down, then delete this comment. If some step does not
+     apply (no database, no worktree, seeded by a fixture file), rewrite it rather than leaving
+     it vague — an unusable procedure means the next screenshot gets taken by hand. -->
+
+The demo instance runs from a **throwaway worktree** of the repository, started from the local
+`main`, on its own ports and its own database, so it never touches the working installation. The
+worktree is created when screenshots have to be produced and removed afterwards; the **database
+stays** and is reused, so steps 3 and 5 are only needed the first time or after a schema change.
+
+1. **The worktree.** From the local `main`, detached — a branch cannot be checked out in two
+   worktrees — borrowing the working installation's build environments:
+
+   ```bash
+   git worktree add --detach <demo-worktree-path> main
+   cd <demo-worktree-path>
+   <symlink the virtualenv / node_modules from the working checkout>
+   ```
+
+   The worktree holds **committed code**: an interface change is committed before it is captured.
+
+2. **Its local configuration** — the git-ignored files that do not come with a checkout. Copy
+   them from the working installation and change only what isolates the instance:
+   <configuration files, and which values change: ports `<demo-ui-port>` / `<demo-api-port>`
+   instead of `<working-ports>`, database `<demo-db>`, the app's own base address, and any
+   outbound notifications **disabled** so seeding sends nothing to anyone>.
+
+3. **The database**, new and empty, then the schema and reference data:
+
+   ```bash
+   <create-database-command>
+   <schema-and-admin-bootstrap-command>
+   ```
+
+   Choose the administrator password now and write it, with the address, into the git-ignored
+   `.claude/.secrets-demo` at the repository root, as `key: value` lines — `login:`, `password:`,
+   `base:`. `capture.mjs` reads it from there.
+
+4. **The servers**, from the worktree, on the demo ports. Then open the demo address in a browser
+   and confirm it is the demo instance — empty, not the working one — before going further.
+   Capturing the working installation by mistake is the failure this whole procedure exists to
+   prevent, and it is invisible in the resulting PNG until someone recognises the data.
+
+5. **The dataset**, through the seed script `<seed-script>`. It drives the application's real
+   endpoints, so the data obeys the app's own rules and stays rebuildable:
+
+   ```bash
+   <seed-command>
+   ```
+
+   Any extra passwords the script creates are appended to the same credentials file. If a
+   screenshot needs data the set does not have, **extend the seed script** — do not enter it by
+   hand, or the set stops being reproducible.
+
+6. **The capture.** In `docs/screenshots/`: add a row to the table in `README.md` (the id is the
+   file name, named after the screen) and a step to `STEPS` in `capture.mjs` that navigates
+   there, opens what needs opening and calls `shot(page, id)`. The existing helpers — `goto`,
+   `dialogOpen`, `pickFromField`, `openTab` — cover the usual cases. Then:
+
+   ```bash
+   cd docs/screenshots && npm install && npx playwright install chromium   # first time only
+   node capture.mjs --only <id>
+   ```
+
+   **Open the resulting PNG** and check it against what the table says before referencing it. A
+   failed step leaves a diagnostic capture in the system temp folder, not in `docs/screenshots/`.
+
+7. **Afterwards**, stop the demo servers and remove the worktree
+   (`git worktree remove --force <demo-worktree-path>`) — it is cheap to recreate, and a stale
+   one only invites captures from old code. Keep the database for next time; when the schema has
+   moved on, drop it and start again from step 3. Then rebuild whatever embeds the screenshots
+   (<regeneration command, if anything other than the in-app help uses the screenshots — the help
+   itself regenerates whenever the dev server starts>).

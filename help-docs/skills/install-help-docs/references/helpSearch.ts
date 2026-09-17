@@ -1,6 +1,6 @@
-// Destination: <nuxtDir>/<srcDir>/utils/helpSearch.ts
+// Destination: <appSrc>/utils/helpSearch.ts
 import type { HelpSearchEntry } from '~/help/types'
-import { helpDocs } from '~/utils/helpDocs'
+import { helpDocs, isHelpModuleEnabled } from '~/utils/helpDocs'
 
 // Searching the help documentation. The index is generated at build time, one entry per section
 // of each document (see `scripts/generate-help.mjs`), and is fetched only on the first search:
@@ -138,6 +138,9 @@ let preparedIndex: Promise<PreparedEntry[]> | undefined
  */
 function loadIndex(): Promise<PreparedEntry[]> {
     preparedIndex ??= import('~/help/generated/search-index').then(({ helpSearchIndex }) => {
+        // Deliberately the unfiltered list: this runs once and is memoised, so filtering by
+        // module here would freeze whatever the module state happened to be at the first
+        // search. Modules are filtered per query, below.
         const docs = new Map(helpDocs.map(doc => [doc.slug, doc]))
         const prepared: PreparedEntry[] = []
         for (const entry of helpSearchIndex) {
@@ -260,6 +263,13 @@ export async function searchHelpDocs(query: string): Promise<HelpSearchResult[]>
 
     const matches: { prepared: PreparedEntry, score: number }[] = []
     for (const prepared of await loadIndex()) {
+        // A section hidden with its module must not be findable either -- otherwise search
+        // sends the reader to a place where the thing they searched for is not shown. The
+        // entry's module is its `:::module` block's, or failing that its document's, so this
+        // one check covers a hidden passage and a hidden document alike.
+        if (!isHelpModuleEnabled(prepared.entry.module)) {
+            continue
+        }
         const score = scoreEntry(prepared, terms, phrase)
         if (score !== undefined) {
             matches.push({ prepared, score })

@@ -2,7 +2,7 @@
   "name": "help-docs",
   "displayName": "Help Docs",
   "version": "0.1.0",
-  "description": "Installs in-app user help documentation into a Nuxt + Vuetify application: Markdown in docs/help compiled at build time, contextual help per page, a searchable topic browser, and an authoring skill written into the app itself.",
+  "description": "Brings in-app user help documentation to an application: Markdown in docs/help compiled and validated at build time, contextual help per screen, a searchable topic browser, reproducible screenshots, optional per-module content, and an authoring skill written into the app itself. Ships a Nuxt + Vuetify reference implementation and rebuilds it in the target app's own stack.",
   "author": {
     "name": "Bogdan Coman",
     "email": "bogdan.coman@unitvision.ro"
@@ -11,8 +11,8 @@
     "help",
     "documentation",
     "markdown",
-    "nuxt",
-    "vuetify",
-    "user-manual"
+    "user-manual",
+    "screenshots",
+    "contextual-help"
   ]
 }

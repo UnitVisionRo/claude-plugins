@@ -1,4 +1,4 @@
-<!-- Destination: <nuxtDir>/<srcDir>/pages/help.vue -->
+<!-- Destination: <appSrc>/pages/help.vue -->
 <template>
     <v-row>
         <!-- The topic list lives in the parent page, so it stays mounted when the topic changes:

@@ -1,4 +1,4 @@
-<!-- Destination: <nuxtDir>/<srcDir>/components/help/HelpContent.vue -->
+<!-- Destination: <appSrc>/components/help/HelpContent.vue -->
 <template>
     <div>
         <v-progress-linear v-if="loading" indeterminate color="primary" />
@@ -9,12 +9,12 @@
              in the parser. It is our own content, reviewed in a PR -- it does not come from
              users and is not fetched at runtime. -->
         <!-- eslint-disable-next-line vue/no-v-html -->
-        <div v-else ref="bodyEl" class="help-body" @click="onBodyClick" v-html="html" />
+        <div v-else ref="bodyEl" class="help-body" @click="onBodyClick" v-html="visibleHtml" />
     </div>
 </template>
 
 <script setup lang="ts">
-import { loadHelpDocHtml } from '~/utils/helpDocs'
+import { filterHelpModuleBlocks, loadHelpDocHtml } from '~/utils/helpDocs'
 
 const props = defineProps<{
     /** The document shown (the file name in docs/help, without its extension). */
@@ -32,6 +32,13 @@ const html = ref('')
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
 const bodyEl = ref<HTMLElement | null>(null)
+
+/**
+ * The body with the `:::module` blocks of switched-off modules removed. A computed, not a
+ * one-off transform of `html`, so the content follows the module flags: if what a flag reads is
+ * reactive, turning a module on reveals its passages without reloading the document.
+ */
+const visibleHtml = computed(() => filterHelpModuleBlocks(html.value))
 
 async function scrollToSection() {
     if (!props.section) {

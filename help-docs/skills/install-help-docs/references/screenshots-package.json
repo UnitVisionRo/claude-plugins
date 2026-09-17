@@ -1,0 +1,13 @@
+{
+    "name": "<app>-screenshots",
+    "private": true,
+    "description": "Screenshots for the user documentation; see README.md",
+    "type": "module",
+    "scripts": {
+        "capture": "node capture.mjs",
+        "list": "node capture.mjs --list"
+    },
+    "devDependencies": {
+        "playwright": "^1.58.0"
+    }
+}

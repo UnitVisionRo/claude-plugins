@@ -1,4 +1,4 @@
-<!-- Destination: <nuxtDir>/<srcDir>/pages/help/[[slug]].vue -->
+<!-- Destination: <appSrc>/pages/help/[[slug]].vue -->
 <template>
     <v-card class="help-doc-card">
         <v-card-text>

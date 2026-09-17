@@ -1,4 +1,4 @@
-<!-- Destination: <nuxtDir>/<srcDir>/components/help/HelpButton.vue -->
+<!-- Destination: <appSrc>/components/help/HelpButton.vue -->
 <template>
     <!-- The component has two root nodes (the button and the dialog), so spacing lives here
          rather than on the caller: a class passed in from outside could not be applied. -->

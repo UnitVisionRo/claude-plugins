@@ -1,4 +1,4 @@
-// Destination: <nuxtDir>/scripts/generate-help.mjs
+// Destination: <appRoot>/scripts/generate-help.mjs
 // Generator for the user-facing help documentation.
 //
 // The source of truth is the Markdown in `docs/help/` (kept in git, edited by developers).
@@ -57,6 +57,44 @@ const GENERATED_HEADER = [
     '// Source: docs/help/*.md -- regenerate with `npm run help:generate`.',
 ].join('\n')
 
+// Design: docs/specs/2026-09-17-help-modules.md sections 7 and 9 (in the help-docs plugin's repository).
+//
+// The optional modules this documentation set declares. This file is the ONE place module
+// names are written down: the generator validates every use against it, and emits it as the
+// `HelpModuleName` union so the application's predicates are checked against the same list. A
+// missing file means no modules, so this costs an application that has none exactly nothing.
+const MODULES_FILE_NAME = 'modules.json'
+
+async function readDeclaredModules() {
+    let raw
+    try {
+        raw = await readFile(join(HELP_SOURCE_DIR, MODULES_FILE_NAME), 'utf8')
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            return new Set()
+        }
+        throw error
+    }
+    let parsed
+    try {
+        parsed = JSON.parse(raw)
+    } catch (error) {
+        throw new Error(`docs/help/${MODULES_FILE_NAME}: not valid JSON -- ${error.message}`)
+    }
+    if (!Array.isArray(parsed) || parsed.some(name => typeof name !== 'string' || !name.trim())) {
+        throw new Error(`docs/help/${MODULES_FILE_NAME}: must be a list of module names, for example ["gdpr"]`)
+    }
+    return new Set(parsed)
+}
+
+/** One message for an undeclared module, so it reads the same wherever it is raised. */
+function undeclaredModuleError(fileName, name, declared) {
+    const list = declared.size
+        ? [...declared].sort().map(module => `"${module}"`).join(', ')
+        : 'none are declared'
+    return new Error(`docs/help/${fileName}: unknown module "${name}". Declared in ${MODULES_FILE_NAME}: ${list}.`)
+}
+
 /**
  * Turns a heading into a section identifier: no diacritics, usable in the `?s=` route
  * parameter.
@@ -78,7 +116,7 @@ const IGNORED_FILE_NAMES = new Set(['claude.md', 'agents.md', 'readme.md'])
  * Reads the Markdown documents from the source folder. Files starting with `_` and the
  * instruction files above are skipped -- notes for developers, not content for users.
  */
-async function readSourceDocs() {
+async function readSourceDocs(declaredModules) {
     const entries = await readdir(HELP_SOURCE_DIR, { withFileTypes: true })
     const files = entries
         .filter(entry => {
@@ -105,6 +143,9 @@ async function readSourceDocs() {
         if (data.routes !== undefined && !Array.isArray(data.routes)) {
             throw new Error(`docs/help/${fileName}: "routes" must be a list of application paths`)
         }
+        if (data.module !== undefined && !declaredModules.has(String(data.module))) {
+            throw undeclaredModuleError(fileName, String(data.module), declaredModules)
+        }
         const rawTabs = readRawTabs(fileName, data.tabs)
         docs.push({
             slug,
@@ -118,17 +159,101 @@ async function readSourceDocs() {
                 group: data.group ? String(data.group) : undefined,
                 summary: data.summary ? String(data.summary) : undefined,
                 routes: (data.routes ?? []).map(String),
+                module: data.module ? String(data.module) : undefined,
             },
         })
     }
     return docs
 }
 
+const MODULE_OPEN_RE = /^:::module\s+(\S+)\s*$/
+const MODULE_CLOSE_RE = /^:::\s*$/
+
+/**
+ * A Markdown extension for passages belonging to an optional module.
+ * Design: docs/specs/2026-09-17-help-modules.md section 4 (authoring).
+ *
+ *     :::module gdpr
+ *     ... shown only where the GDPR module is switched on ...
+ *     :::
+ *
+ * The block becomes `<div data-help-module="gdpr">`, which the application removes from the page
+ * when the module is off. The content is compiled either way -- see the head of this file.
+ *
+ * Blocks do not nest: a module inside a module has no meaning and would make the filtering
+ * ambiguous about which flag governs what.
+ */
+function helpModulePlugin(md, fileName, declaredModules) {
+    md.block.ruler.before('fence', 'help_module', (state, startLine, endLine, silent) => {
+        const lineAt = line => state.src.slice(state.bMarks[line] + state.tShift[line], state.eMarks[line])
+        const open = MODULE_OPEN_RE.exec(lineAt(startLine))
+        if (!open) {
+            return false
+        }
+        if (silent) {
+            return true
+        }
+        const name = open[1]
+        if (!declaredModules.has(name)) {
+            throw undeclaredModuleError(fileName, name, declaredModules)
+        }
+
+        let closeLine = -1
+        for (let line = startLine + 1; line < endLine; line++) {
+            const text = lineAt(line)
+            if (MODULE_OPEN_RE.test(text)) {
+                throw new Error(`docs/help/${fileName}: ":::module" blocks cannot be nested`)
+            }
+            if (MODULE_CLOSE_RE.test(text)) {
+                closeLine = line
+                break
+            }
+        }
+        if (closeLine === -1) {
+            throw new Error(`docs/help/${fileName}: ":::module ${name}" is never closed (a line reading ":::" is missing)`)
+        }
+
+        const openToken = state.push('help_module_open', 'div', 1)
+        openToken.attrSet('data-help-module', name)
+        openToken.block = true
+
+        state.md.block.tokenize(state, startLine + 1, closeLine)
+
+        state.push('help_module_close', 'div', -1).block = true
+        state.line = closeLine + 1
+        return true
+    })
+}
+
+/**
+ * The module each token belongs to: `undefined` outside `:::module` blocks, the module's name
+ * inside one. Used to label the headings of the outline and to validate links into a module.
+ */
+function moduleContextByToken(tokens) {
+    const context = new Array(tokens.length)
+    let current
+    tokens.forEach((token, index) => {
+        if (token.type === 'help_module_open') {
+            current = token.attrGet('data-help-module')
+            context[index] = undefined
+            return
+        }
+        if (token.type === 'help_module_close') {
+            context[index] = undefined
+            current = undefined
+            return
+        }
+        context[index] = current
+    })
+    return context
+}
+
 /**
  * Adds an `id` to every heading and returns the document's outline. The ids are what links to
- * sections use (`/help/<slug>?s=<id>`).
+ * sections use (`/help/<slug>?s=<id>`). A heading inside a module block carries that module, so
+ * it leaves the outline together with its section.
  */
-function applyHeadingIds(tokens) {
+function applyHeadingIds(tokens, modules) {
     const headings = []
     const used = new Map()
     tokens.forEach((token, index) => {
@@ -141,26 +266,33 @@ function applyHeadingIds(tokens) {
         used.set(base, seen + 1)
         const id = seen === 0 ? base : `${base}-${seen + 1}`
         token.attrSet('id', id)
-        headings.push({ id, text, level: Number(token.tag.slice(1)) })
+        headings.push({ id, text, level: Number(token.tag.slice(1)), module: modules[index] })
     })
     return headings
 }
 
 /**
- * Checks an anchor before rewriting it: the section has to exist in the target document.
- * Without this check a renamed heading leaves links that lead nowhere -- their form stays
- * valid, so nothing else would catch them.
+ * Checks an anchor before rewriting it: the section has to exist in the target document, and it
+ * has to be visible whenever the place linking to it is. Without the first check a renamed
+ * heading leaves links that lead nowhere -- their form stays valid, so nothing else would catch
+ * them. Without the second, switching a module off turns a live link into a dead one.
  */
-function assertSectionExists({ sourceDoc, section, href, headings }) {
+function assertSectionExists({ sourceDoc, section, href, headings, linkModule }) {
     const heading = headings.find(item => item.id === section)
-    if (heading) {
-        return
+    if (!heading) {
+        const available = headings.map(item => item.id)
+        const list = available.length
+            ? ` Available sections: ${available.map(id => `"#${id}"`).join(', ')}.`
+            : ' The target document has no sections.'
+        throw new Error(`docs/help/${sourceDoc.fileName}: link to a section that does not exist ("${href}").${list}`)
     }
-    const available = headings.map(item => item.id)
-    const list = available.length
-        ? ` Available sections: ${available.map(id => `"#${id}"`).join(', ')}.`
-        : ' The target document has no sections.'
-    throw new Error(`docs/help/${sourceDoc.fileName}: link to a section that does not exist ("${href}").${list}`)
+    // A section written inside a `:::module` block disappears with its module. A link to it is
+    // only safe if it disappears at the same time -- because it too is inside that module, or
+    // because the whole document linking from it belongs to that module.
+    const sectionModule = heading.module
+    if (sectionModule && sourceDoc.meta.module !== sectionModule && linkModule !== sectionModule) {
+        throw new Error(`docs/help/${sourceDoc.fileName}: link to the section "${href}", which belongs to the module "${sectionModule}". Put the link inside a ":::module ${sectionModule}" block, or mark the document with "module: ${sectionModule}".`)
+    }
 }
 
 /**
@@ -198,8 +330,15 @@ function resolveTabTargets({ sourceDoc, docsBySlug, headingsBySlug }) {
     for (const [tab, target] of Object.entries(rawTabs)) {
         const [rawTarget, section] = target.split('#')
         const targetSlug = rawTarget ? rawTarget.replace(/\.md$/i, '') : sourceDoc.slug
-        if (!docsBySlug.has(targetSlug)) {
+        const targetDoc = docsBySlug.get(targetSlug)
+        if (!targetDoc) {
             throw new Error(`docs/help/${sourceDoc.fileName}: tab "${tab}" points at the non-existent document "${rawTarget}"`)
+        }
+        // A tab is always on screen, so the Help button must always have something to open for
+        // it. Pointing it at a document that disappears with a module would leave the button
+        // falling back to the topic list on a screen that has a document.
+        if (targetDoc.meta.module) {
+            throw new Error(`docs/help/${sourceDoc.fileName}: tab "${tab}" points at "${targetSlug}", a document of the module "${targetDoc.meta.module}". A tab is always visible, so its help cannot depend on a module.`)
         }
         if (section) {
             assertSectionExists({
@@ -207,6 +346,8 @@ function resolveTabTargets({ sourceDoc, docsBySlug, headingsBySlug }) {
                 section,
                 href: target,
                 headings: headingsBySlug.get(targetSlug) ?? [],
+                // The tab's target must be visible whenever the tab is, i.e. unconditionally.
+                linkModule: undefined,
             })
         }
         resolved[tab] = section ? { slug: targetSlug, section } : { slug: targetSlug }
@@ -228,8 +369,9 @@ function resolveTabTargets({ sourceDoc, docsBySlug, headingsBySlug }) {
  * the same HTML is also rendered inside the contextual help dialog, where the browser has no
  * anchor to jump to -- `HelpContent.vue` scrolls to it itself, identically in both places.
  */
-function rewriteLinks(tokens, doc, docsBySlug, headingsBySlug) {
-    for (const token of tokens) {
+function rewriteLinks(tokens, doc, docsBySlug, headingsBySlug, modules) {
+    tokens.forEach((token, index) => {
+        const linkModule = modules[index]
         const children = token.type === 'inline' ? token.children ?? [] : []
         for (const child of children) {
             if (child.type !== 'link_open') {
@@ -253,6 +395,7 @@ function rewriteLinks(tokens, doc, docsBySlug, headingsBySlug) {
                     section: localSection,
                     href,
                     headings: headingsBySlug.get(doc.slug) ?? [],
+                    linkModule,
                 })
                 child.attrSet('href', `/help/${doc.slug}?s=${localSection}`)
                 continue
@@ -269,6 +412,7 @@ function rewriteLinks(tokens, doc, docsBySlug, headingsBySlug) {
                         section,
                         href,
                         headings: headingsBySlug.get(targetSlug) ?? [],
+                        linkModule,
                     })
                 }
                 child.attrSet('href', `/help/${targetSlug}${section ? `?s=${section}` : ''}`)
@@ -276,7 +420,7 @@ function rewriteLinks(tokens, doc, docsBySlug, headingsBySlug) {
             }
             throw new Error(`docs/help/${doc.fileName}: unrecognised link ("${href}"). Use another .md document, "app:/path", "#section" or an http(s) address.`)
         }
-    }
+    })
 }
 
 /**
@@ -400,7 +544,7 @@ function renderImageAsFigure(tokens, index) {
  * Compiles the documents. Writes nothing to disk -- if a document is invalid it throws before
  * the existing good version is touched.
  */
-async function compileDocs(docs) {
+async function compileDocs(docs, declaredModules) {
     const docsBySlug = new Map(docs.map(doc => [doc.slug, doc]))
 
     // First pass: parse each document and work out its outline. Validating the anchors in the
@@ -412,21 +556,23 @@ async function compileDocs(docs) {
     for (const doc of docs) {
         const md = new MarkdownIt({ html: false, linkify: true, breaks: false })
         md.renderer.rules.image = renderImageAsFigure
+        helpModulePlugin(md, doc.fileName, declaredModules)
 
         const tokens = md.parse(doc.content, {})
-        const headings = applyHeadingIds(tokens)
+        const modules = moduleContextByToken(tokens)
+        const headings = applyHeadingIds(tokens, modules)
         const docImages = await collectImages(md, tokens, doc, images)
-        parsed.push({ doc, md, tokens, headings, images: docImages })
+        parsed.push({ doc, md, tokens, headings, modules, images: docImages })
     }
 
     const headingsBySlug = new Map(parsed.map(item => [item.doc.slug, item.headings]))
 
     // Second pass: rewrite the links, now that anchor targets can be checked too.
     const searchEntries = []
-    const compiled = parsed.map(({ doc, md, tokens, headings, images: docImages }) => {
-        rewriteLinks(tokens, doc, docsBySlug, headingsBySlug)
+    const compiled = parsed.map(({ doc, md, tokens, headings, modules, images: docImages }) => {
+        rewriteLinks(tokens, doc, docsBySlug, headingsBySlug, modules)
         const tabs = resolveTabTargets({ sourceDoc: doc, docsBySlug, headingsBySlug })
-        searchEntries.push(...collectSearchEntries(doc, tokens))
+        searchEntries.push(...collectSearchEntries(doc, tokens, modules))
         return {
             ...doc,
             html: md.renderer.render(tokens, md.options, {}),
@@ -466,7 +612,7 @@ function inlineText(token) {
  * Headings are not folded into the section's text: they are kept separately so they can be
  * scored higher than the body and shown as the result's title.
  */
-function collectSearchEntries(doc, tokens) {
+function collectSearchEntries(doc, tokens, modules) {
     const entries = []
     let heading
     let parts = []
@@ -478,14 +624,26 @@ function collectSearchEntries(doc, tokens) {
         // A section with no body (just a heading, immediately followed by another) still has to
         // be findable by its heading, so the entry is emitted with empty text.
         const text = parts.join(' ').replace(/\s+/gu, ' ').trim()
-        entries.push({ slug: doc.meta.slug, section: heading.id, heading: heading.text, text })
+        // Unlike the outline's headings, a search entry DOES inherit the document's module:
+        // there either reason to hide the section should keep it out of the results.
+        entries.push({
+            slug: doc.meta.slug,
+            section: heading.id,
+            heading: heading.text,
+            module: heading.module ?? doc.meta.module,
+            text,
+        })
         parts = []
     }
 
     tokens.forEach((token, index) => {
         if (token.type === 'heading_open') {
             flushSection()
-            heading = { id: token.attrGet('id'), text: tokens[index + 1]?.content ?? '' }
+            heading = {
+                id: token.attrGet('id'),
+                text: tokens[index + 1]?.content ?? '',
+                module: modules[index],
+            }
             return
         }
         // A heading's text is the inline token right after it; skip that one.
@@ -541,20 +699,35 @@ function renderManifestEntry(meta) {
     if (meta.tabs) {
         lines.push(`        tabs: ${JSON.stringify(meta.tabs)},`)
     }
+    if (meta.module) {
+        lines.push(`        module: ${JSON.stringify(meta.module)},`)
+    }
     lines.push(`        headings: ${JSON.stringify(meta.headings)},`)
     lines.push('    },')
     return lines.join('\n')
 }
 
-function renderManifest(compiled) {
+function renderManifest(compiled, declaredModules) {
     const ordered = [...compiled].sort((a, b) => a.meta.order - b.meta.order || a.meta.title.localeCompare(b.meta.title))
     const entries = ordered.map(doc => renderManifestEntry(doc.meta))
     const loaders = ordered.map(doc => `    ${JSON.stringify(doc.slug)}: () => import('./docs/${doc.slug}'),`)
+
+    // The declared modules as a union, so `~/utils/helpModules` is checked against the same
+    // list the generator validates the documents against: a declared module with no predicate,
+    // or a predicate for something undeclared, is then a type error rather than documentation
+    // that quietly never appears. `never` when nothing is declared, which makes the predicate
+    // map `{}` -- the shape an application with no optional parts already has.
+    const moduleUnion = declaredModules.size
+        ? [...declaredModules].sort().map(module => JSON.stringify(module)).join(' | ')
+        : 'never'
 
     return [
         GENERATED_HEADER,
         '',
         "import type { HelpDocMeta } from '../types'",
+        '',
+        '// The optional modules declared in docs/help/modules.json.',
+        `export type HelpModuleName = ${moduleUnion}`,
         '',
         '// Every document\'s metadata, ordered for the help menu.',
         'export const helpManifest: HelpDocMeta[] = [',
@@ -596,9 +769,11 @@ function renderSearchIndex(entries) {
  * Regenerates the documentation. Returns the number of documents compiled.
  */
 export async function generateHelpDocs() {
+    const declaredModules = await readDeclaredModules()
+
     let docs
     try {
-        docs = await readSourceDocs()
+        docs = await readSourceDocs(declaredModules)
     } catch (error) {
         if (error.code === 'ENOENT') {
             // The generated files are not in git, so without the source the application cannot
@@ -611,7 +786,7 @@ export async function generateHelpDocs() {
         throw error
     }
 
-    const { compiled, images, searchEntries } = await compileDocs(docs)
+    const { compiled, images, searchEntries } = await compileDocs(docs, declaredModules)
 
     await rm(OUTPUT_DIR, { recursive: true, force: true })
     await mkdir(DOCS_OUTPUT_DIR, { recursive: true })
@@ -622,7 +797,7 @@ export async function generateHelpDocs() {
     for (const doc of compiled) {
         await writeFile(join(DOCS_OUTPUT_DIR, `${doc.slug}.ts`), renderDocModule(doc), 'utf8')
     }
-    await writeFile(join(OUTPUT_DIR, 'manifest.ts'), renderManifest(compiled), 'utf8')
+    await writeFile(join(OUTPUT_DIR, 'manifest.ts'), renderManifest(compiled, declaredModules), 'utf8')
     await writeFile(join(OUTPUT_DIR, 'search-index.ts'), renderSearchIndex(searchEntries), 'utf8')
 
     return compiled.length
