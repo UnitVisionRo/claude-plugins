@@ -1,6 +1,6 @@
 ---
 name: "spec-driven-development"
-description: "The phase → chunk → review workflow for planning and implementing functional specs. Use when building a feature from a spec, splitting a phase into chunks, planning or reviewing an implementation phase, or deciding when to commit. Defines where specs and plans live, how code references them, and the commit and review rules that override the superpowers defaults."
+description: "The phase → chunk → review workflow for planning and implementing functional specs. Use when brainstorming or building a feature from a spec, splitting a phase into chunks, planning or reviewing an implementation phase, or deciding when to commit. Defines where specs and plans live, how code references them, and the commit and review rules that override the superpowers defaults."
 ---
 
 # Spec-driven development
