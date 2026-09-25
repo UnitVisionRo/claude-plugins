@@ -1,6 +1,6 @@
 ---
 name: "spec-driven-development"
-description: "The phase → chunk → review workflow for planning and implementing functional specs. Use when brainstorming or building a feature from a spec, splitting a phase into chunks, planning or reviewing an implementation phase, or deciding when to commit. Defines where specs and plans live, how code references them, and the commit and review rules that override the superpowers defaults."
+description: "The phase → chunk → review workflow for planning and implementing functional specs. Use when brainstorming a functional spec or building a feature from a spec, splitting a phase into chunks, planning or reviewing an implementation phase, or deciding when to commit. Defines where specs and plans live, how code references them, the design principles for extracting vs. reusing code, and the commit and review rules that override the superpowers defaults."
 ---
 
 # Spec-driven development
@@ -83,6 +83,8 @@ STEP 2 — IMPLEMENTATION LOOP
   2a. Implement the plan with /superpowers:subagent-driven-development. Model selection is
       decided by the skill. Do NOT launch a review subagent for each task in this step,
       contrary to what the skill says. **Reviews** are done **per chunk**.
+      Implementer subagents don't load this skill, so paste the Design principles section
+      into every implementer's prompt.
   2b. Self review the chunk.
   2c. If review found issues: fix them, then return to STEP 2a
       If review is clean: proceed to next chunk
@@ -120,6 +122,9 @@ phase-level self review (STEP 3). Use reviewer subagents for both.
 
 **Contrary to `/superpowers:subagent-driven-development`, do NOT review each task in the
 chunk.** One reviewer per chunk, after its tasks land.
+
+Both review layers check the code against the Design principles below — include that section
+in every reviewer's prompt, and treat a violation as a review finding like any other.
 
 ## Commit rules
 
@@ -180,6 +185,9 @@ On MySQL the same discipline applies with `CREATE DATABASE` / `DROP DATABASE` in
 - **⛔ Never run migrations against the shared dev database** — a chunk's migration is still a
   draft and may be rewritten in review, which would strand the dev DB at a revision no file
   describes.
+- **If a subagent can't create or drop databases** (permission denied), the orchestrator does
+  both on its behalf: create before dispatching the chunk, drop after its final gate reports
+  green. The rules above still apply — drop only after `0 skipped` is reported, never force.
 
 **The corollary, at STEP 5:** because chunks never touch the main DB, it drifts behind head.
 Bring it current once the phase is approved and its migrations are final:
@@ -187,3 +195,40 @@ Bring it current once the phase is approved and its migrations are final:
 ```bash
 uv run alembic upgrade head
 ```
+
+## Design principles
+
+Implementers follow these; both review layers check them (see Self review rules).
+
+Follow DRY and SOLID in general. The two subsections below are how they apply in practice, and
+they settle any conflict:
+
+- **DRY** is *Reuse before duplication*.
+- **SOLID** shapes code that has real callers and real variation; it is not a reason to add
+  layers ahead of need. An interface with one implementation, or an extension point nothing
+  extends yet, is the premature abstraction ruled out below — meet Open/Closed and Dependency
+  Inversion by refactoring when the second implementation arrives. Single Responsibility
+  may split a long function into smaller ones for readability — but those pieces stay local
+  and private (see below).
+
+### No premature abstraction — private until a second caller
+
+- Indirection has a cost. Code with only one caller never goes in the shared service or
+  utility layer (services, core helpers, composables, utilities).
+- Splitting a long function to make it easier to read is fine. The pieces stay **local and
+  private** next to their caller — in the same module, not exported (e.g. a leading `_` in
+  Python) — until a second caller exists.
+- Don't make anything public or shared "in case it's needed later". When a second caller
+  arrives, that is the moment to promote the private helper to a public utility — a cheap,
+  local refactor.
+
+### Reuse before duplication
+
+- Before writing behavior that may already exist, check the project's service layer and core
+  helpers (e.g. `back/services/`, `back/core/`) and the frontend composables/utilities.
+- Never duplicate functionality. If shared code nearly fits, extend or generalize it
+  backward-compatibly, preserving existing callers' behavior. If the logic you need lives
+  inline or in a private helper of one caller, promote it to the shared layer now (see above)
+  rather than copying it.
+- If adapting shared code safely isn't feasible, surface the trade-off instead of cloning the
+  logic.
