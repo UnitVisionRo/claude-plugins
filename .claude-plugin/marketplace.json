@@ -13,7 +13,7 @@
       "name": "dev-workflow",
       "source": "./dev-workflow",
       "description": "Development workflow skills shared across projects: the spec-driven phase/chunk workflow, business-readable Git commit messages, and the discipline for writing progress back to an issue tracker.",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "author": {
         "name": "Bogdan Coman"
       },

@@ -5,9 +5,9 @@ description: "The phase → chunk → review workflow for planning and implement
 
 # Spec-driven development
 
-The workflow for planning and implementing functional specs: a phase is split into chunks,
-each chunk is planned, implemented and reviewed, and the phase is reviewed as a whole before a
-human sees it.
+The workflow for designing and implementing functional specs: a feature is designed into a
+spec, each phase of the spec is split into chunks, each chunk is implemented and reviewed, and
+the phase is reviewed as a whole before a human sees it.
 
 ## ⚠️ Precedence over the `superpowers` plugin
 
@@ -20,9 +20,18 @@ When `superpowers` is loaded, the rules below win. Where they are silent, follow
 | Committing during work | Several skills commit as they go (`brainstorming` commits the design doc; `executing-plans` and `finishing-a-development-branch` commit progress) | **Never commit** except where this workflow explicitly allows it, and never without the user's instruction — see Commit rules. |
 | Design docs | `brainstorming`: write to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit it | Specs live where **the project's `CLAUDE.md`** says (see Spec and plan file locations) and are **not** committed on the skill's own initiative. |
 | Finishing a branch | `finishing-a-development-branch` decides how to integrate | The phase ends at **STEP 5**; integration is the user's call. |
+| Design questions | `brainstorming`: one question per message | Ask in **rounds** through `AskUserQuestion`, each as full as the tool allows — see Designing the spec. |
+| Design gates | `brainstorming` HARD-GATE: after the written spec, the human also reviews the implementation plan and chooses an execution method | The human gates end at the **written-spec review** — see Designing the spec. No plan review, no execution-method question; the next human gate is STEP 4. |
+| After the spec | `brainstorming`: invoke `writing-plans` next | Split the spec into phases and start **The workflow** at STEP 0. |
+| When to plan | `writing-plans`: before touching code on any multi-step task | A chunk gets a plan **only** when STEP 1 says so; every other chunk goes straight to STEP 2. |
+| Plan detail | `writing-plans` "No Placeholders": every code step carries the complete code | Plans are **design-level** — see STEP 1. Code appears only where prose cannot pin the result. |
+| Plan handoff | `writing-plans`: ask the human to review the plan and choose an execution method | Neither. Execution is STEP 2. |
+| Model choice | `subagent-driven-development` and others: escalate to the most capable model for hard tasks, later fix rounds and final reviews | **Opus is the ceiling** for every model chosen automatically, in this workflow and in the skills it invokes. Fable runs only when the user asks for it. |
 
-Skills this workflow **does** invoke, unchanged: `/superpowers:writing-plans` (STEP 1) and
-`/superpowers:subagent-driven-development` (STEP 2a, minus its per-task review).
+Skills this workflow invokes, with the overrides above: `/superpowers:brainstorming` (Designing
+the spec), `/superpowers:writing-plans` (STEP 1, only for chunks that need a plan) and
+`/superpowers:subagent-driven-development` (STEP 2a for planned chunks, minus its per-task
+review).
 
 ## Spec and plan file locations
 
@@ -36,10 +45,11 @@ When the project says nothing, use this shape:
 - **Functional spec**: `docs/spec/<YY-MM-DD>-<feature_name>/` — the source of truth for the
   platform's behavior. If the feature needs only a single file, name it
   `<YY-MM-DD>-<feature_name>.md`.
-- **Plans**: `docs/spec/<YY-MM-DD>-<feature_name>/plans/` — the implementation plan for a
-  feature, derived from the spec. Kind of like a "compiler" for the spec: it translates the
-  spec into a concrete, actionable plan for implementation. Each plan is **phase-specific** and
-  may be broken into multiple chunks, each with its own independently testable deliverable.
+- **Plans**: `docs/spec/<YY-MM-DD>-<feature_name>/plans/` — derived from the spec: one short
+  overview per phase (STEP 0) and, for a chunk that needs one, a design-level chunk plan
+  (STEP 1). Plans translate the spec into work — which chunks, in what order, against which
+  interfaces — and carry design, not code. Each chunk has its own independently testable
+  deliverable.
 
 The `<YY-MM-DD>-<feature_name>` naming applies wherever the parent lives. Whether plans are
 committed is also per-project — some treat them as ephemeral and never commit them.
@@ -59,6 +69,30 @@ useless without the file path, because **the same section number appears in mult
 `§4.4` alone cannot be resolved. This maintains traceability between code and the functional
 spec.
 
+## Designing the spec
+
+Design a feature with `/superpowers:brainstorming`, under the overrides in the precedence table.
+Its classification decides what follows:
+
+- **Architectural** — ends in a written functional spec, then continues with The workflow
+  below.
+- **Bounded** or **spike** — no spec and no phases. Brainstorming's own path applies, and so do
+  this skill's Commit rules.
+
+Questions go to the human through the `AskUserQuestion` tool, in rounds. A round is one call,
+filled with as many of the questions that can already be asked as the tool accepts in a single
+call. When more questions are ready than one call holds, ask them in successive rounds. Each
+question lists your recommended option first, labeled "(Recommended)". A question whose wording
+depends on an answer still pending waits for a later round.
+
+Besides the question rounds, the architectural path has exactly two approval gates:
+
+1. approval of each design section during the dialogue;
+2. review of the written spec.
+
+Once the spec is approved, split it into phases (unless the spec already defines them) and
+start the first phase at STEP 0. The human sees the work next at STEP 4.
+
 ## The workflow
 
 Split each phase into the most atomic dev chunks possible. For **each phase**, execute the
@@ -72,20 +106,45 @@ STEP 4 (human review) and STEP 5 (tracker update) are performed **once for the w
 not once per chunk.
 
 <workflow>
+STEP 0 — PHASE OVERVIEW (once per phase)
+  Write `plans/phase-<N>-overview.md`. It is design only, no code, and holds:
+  - the chunks, each with its deliverable and the spec sections it implements;
+  - the dependency DAG and the batches it allows;
+  - the interfaces between chunks: schemas, endpoints, types, shared files;
+  - the constraints every chunk shares: project rules, per-agent database names.
+  Every chunk agent receives the spec and this overview.
+
 <for-each-chunk>
-STEP 1 — PLAN
-  - Use a subagent to write the plans using the /superpowers:writing-plans skill
+STEP 1 — PLAN (only for a chunk that needs one)
+  - A chunk needs a plan when it shares an interface with another chunk in the same batch —
+    one of them produces a schema, an endpoint, a type or a shared file that the other uses.
+    Both chunks get a plan. Any other chunk has no plan and goes straight to STEP 2.
+  - Use a subagent to write the plan with the /superpowers:writing-plans skill, to
+    `plans/phase-<N>-chunk-<M>-<slug>.md`. Planner subagents don't load this skill, so their
+    prompt says: the plan is design-level as described here, it has no commit steps, and it
+    ends with the plan's path instead of writing-plans' execution handoff. Below the header
+    writing-plans requires, a design-level plan holds:
+    1. the file map: each file created or modified, with its responsibility;
+    2. the interfaces: exact names, signatures and types the chunk consumes and produces;
+    3. the decisions the spec leaves open: which existing code to reuse, the shape of a
+       migration, where new code lives;
+    4. the tasks, each with its tests written as "input → expected behavior";
+    5. Review Focus and known traps.
+    Code appears only where prose cannot pin the result: a migration, a non-obvious query, a
+    signature. A chunk plan runs to a few hundred lines.
   - Subagent model selection: since planning is the most important part of the workflow, you
-    must use opus or fable (when available) for planning. However, be mindful of the usage
-    costs and choose fable only if the plan is very complex and requires a lot of reasoning.
+    must use opus for planning.
 
 STEP 2 — IMPLEMENTATION LOOP
-  2a. Implement the plan with /superpowers:subagent-driven-development. Model selection is
-      decided by the skill. Do NOT launch a review subagent for each task in this step,
-      contrary to what the skill says. **Reviews** are done **per chunk**.
+  2a. Implement the chunk:
+      - **Chunk without a plan:** one opus implementer subagent implements the whole chunk
+        from the spec and the phase overview, running the tests as it goes.
+      - **Chunk with a plan:** implement the plan with /superpowers:subagent-driven-development.
+        Model selection is decided by the skill. Do NOT launch a review subagent for each task
+        in this step, contrary to what the skill says. **Reviews** are done **per chunk**.
       Implementer subagents don't load this skill, so paste the Design principles section
       into every implementer's prompt.
-  2b. Self review the chunk.
+  2b. Self review the chunk with a reviewer subagent other than its implementer.
   2c. If review found issues: fix them, then return to STEP 2a
       If review is clean: proceed to next chunk
 
@@ -110,7 +169,7 @@ STEP 4 — HUMAN REVIEW (human evaluates the whole phase)
   - If approved: proceed to STEP 5
   - If minor issues: fix them (accumulate uncommitted, per the rule above); re-surface for the
     human
-  - If major/structural issues: return to STEP 1
+  - If major/structural issues: return to STEP 0
 
 STEP 5 — UPDATE SPEC TRACKER
 </workflow>
@@ -156,7 +215,8 @@ Where the test suite derives its database from a single setting (e.g. `conftest.
 So every agent that runs pytest gets its **own** `DB_NAME`.
 
 Nothing in the code creates or drops a database. Both halves are manual, and **both belong in
-the plan**. For PostgreSQL:
+the chunk's instructions** — its plan, or the implementer's prompt when the chunk has no plan.
+For PostgreSQL:
 
 ```bash
 # Setup — first task of the chunk
