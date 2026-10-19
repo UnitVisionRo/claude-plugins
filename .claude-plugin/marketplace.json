@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugins shared across Bogdan's projects.",
-    "version": "0.1.1"
+    "version": "0.1.2"
   },
   "plugins": [
     {
@@ -102,6 +102,24 @@
         "user-manual"
       ],
       "category": "installer"
+    },
+    {
+      "name": "client-comms",
+      "source": "./client-comms",
+      "description": "Client-facing communication about what shipped. Provides release-notes: a Romanian, business-language release email for the client's staff, built from a commit range and verified against the code, delivered as an Outlook-ready .eml with embedded screenshots. Each app supplies its facts through a small local skill.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Bogdan Coman"
+      },
+      "keywords": [
+        "release-notes",
+        "changelog",
+        "client",
+        "email",
+        "outlook",
+        "romanian"
+      ],
+      "category": "workflow"
     }
   ]
 }

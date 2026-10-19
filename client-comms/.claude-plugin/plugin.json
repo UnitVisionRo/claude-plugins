@@ -1,0 +1,18 @@
+{
+  "name": "client-comms",
+  "displayName": "Client Comms",
+  "version": "0.1.0",
+  "description": "Client-facing communication about what shipped. Provides release-notes: a Romanian, business-language release email for the client's staff, built from a commit range and verified against the code, delivered as an Outlook-ready .eml with embedded screenshots. Each app supplies its facts through a small local skill.",
+  "author": {
+    "name": "Bogdan Coman",
+    "email": "bogdan.coman@unitvision.ro"
+  },
+  "keywords": [
+    "release-notes",
+    "changelog",
+    "client",
+    "email",
+    "outlook",
+    "romanian"
+  ]
+}

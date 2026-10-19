@@ -9,7 +9,7 @@ installing, not the repository name.
 
 ## At a glance
 
-**5 plugins, 9 skills.** Skills are invoked as `<plugin>:<skill>`. "Always-on" is what a
+**6 plugins, 10 skills.** Skills are invoked as `<plugin>:<skill>`. "Always-on" is what a
 plugin's descriptions cost in *every* session; "on invoke" is paid only when a skill fires.
 
 | plugin | skill | fires | always-on | on invoke |
@@ -23,9 +23,10 @@ plugin's descriptions cost in *every* session; "on invoke" is paid only when a s
 | **`database`** | `alembic` | automatically | ~80 | ~1.7k |
 | **`scaffold`** | `fastapi-nuxt-scaffold` | `/fastapi-nuxt-scaffold` | ~140 | ~5.3k |
 | **`help-docs`** | `install-help-docs` | `/install-help-docs` | ~90 | ~2.3k |
+| **`client-comms`** | `release-notes` | via the app's local skill | ~60 | ~2.8k |
 
-All five enabled costs roughly **800 tokens** in every session — `dev-workflow` ~259,
-`project-tooling` ~230, `scaffold` ~139, `help-docs` ~90, `database` ~81. Disable what a project
+All six enabled costs roughly **860 tokens** in every session — `dev-workflow` ~259,
+`project-tooling` ~230, `scaffold` ~139, `help-docs` ~90, `database` ~81, `client-comms` ~60. Disable what a project
 does not need; `scaffold` and `help-docs` are the usual candidates, since both do their work
 once and then never again.
 
@@ -41,6 +42,7 @@ claude plugin install project-tooling@bogdan-plugins
 claude plugin install database@bogdan-plugins
 claude plugin install scaffold@bogdan-plugins
 claude plugin install help-docs@bogdan-plugins
+claude plugin install client-comms@bogdan-plugins
 ```
 
 Use the **SSH** URL while the repository is private — it reuses the SSH key you already push
@@ -124,6 +126,21 @@ a project only gets scaffolded once.
 Slash-command only (`/install-help-docs`). Like `scaffold`, enable it for the install and
 disable it afterwards — the documentation is then maintained through the skill it leaves behind
 in the app.
+
+### `client-comms` — telling the client what shipped
+
+| skill | |
+|---|---|
+| `release-notes` | The client's release email, in Romanian, for non-technical staff: from a commit range, with every claim checked against the code and migrations, screenshots from the app's own capture tooling, and an Outlook-ready `.eml` (CID-embedded images, opens as a draft) plus `.html` and `.txt`. Ships the builder that produces and verifies the `.eml`. |
+
+Generic on purpose. Each app keeps a small **local** skill at `.claude/skills/release-notes/SKILL.md` that
+invokes `client-comms:release-notes` and supplies the app's facts: name, theme colours, help-docs and manual
+paths, vocabulary, migrations, screenshot store and demo-instance capture procedure. Start it from
+`client-comms/skills/release-notes/references/local-skill-template.md`.
+
+The skill stays model-invocable on purpose: a local skill reaches it through the Skill tool, and
+`disable-model-invocation` risks blocking that call. Its description is narrow enough that it does not fire on
+commit messages or developer changelogs.
 
 ## Updating
 
