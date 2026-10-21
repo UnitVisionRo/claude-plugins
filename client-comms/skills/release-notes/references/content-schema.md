@@ -7,8 +7,8 @@ quotes (`„…”`) are written literally.
 ```json
 {
   "app_name": "PoolFlow",
-  "subject": "PoolFlow — noutățile versiunii din octombrie 2026",
-  "subtitle": "Noutățile versiunii din octombrie 2026",
+  "subject": "PoolFlow — noutățile versiunii din 18 octombrie 2026",
+  "subtitle": "Noutățile versiunii din 18 octombrie 2026",
   "theme": { "primary": "#1a3fd6", "on_primary": "#ffffff", "on_primary_muted": "#dbe4ff" },
 
   "greeting": "Bună ziua,",
@@ -62,7 +62,7 @@ quotes (`„…”`) are written literally.
 | Field | Required | Notes |
 |---|---|---|
 | `app_name`, `subtitle` | yes | Header band. The `app_name`, lowercased and stripped to `[a-z0-9-]`, is also the `Content-ID` domain. |
-| `subject` | yes | The email subject and the HTML `<title>`. |
+| `subject` | yes | The email subject and the HTML `<title>`. A date in it (or in `subtitle`) must include the day: `18 octombrie 2026`, not `octombrie 2026`. |
 | `theme` | `primary` yes | Overrides of the defaults below; `primary` must come from the app's theme. An unknown key is an error, which catches typos. |
 | `greeting`, `intro[]` | yes | `intro` is a list of paragraphs. |
 | `notice[]` | no | "De reținut" bullets. Omit or leave empty only when nothing changes daily work or data. |

@@ -102,8 +102,10 @@ Sort what survives into the sections below. When something could go either way, 
 
 Write `content.json` (schema: `references/content-schema.md`) in the release folder. The email is, in order:
 
-1. **Header band** in the app's colours: app name, subtitle `Noutățile versiunii din <luna> <anul>`, the
-   month the release reaches the client.
+1. **Header band** in the app's colours: app name, subtitle `Noutățile versiunii din <ziua> <luna> <anul>`
+   (e.g. `din 18 octombrie 2026`), the date the release reaches the client. The subject is
+   `<App> — noutățile versiunii din <ziua> <luna> <anul>`. A date in the subject or subtitle always includes
+   the day; the builder rejects a month without one.
 2. **Intro:** greeting, then 2–3 sentences naming the release's main themes in business terms, pointing to the
    manual and the in-app help for details.
 3. **"De reținut"** — first, so it cannot be missed. Everything that changes daily work or data: data the

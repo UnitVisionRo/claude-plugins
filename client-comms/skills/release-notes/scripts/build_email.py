@@ -56,6 +56,8 @@ DEFAULT_TITLES = {
 CEDILLA = {"ş": "ș", "ţ": "ț", "Ş": "Ș", "Ţ": "Ț"}
 IMAGE_NAME = re.compile(r"^[a-z0-9][a-z0-9-]*\.(png|jpe?g)$")
 RAW_TAG = re.compile(r"</?[a-zA-Z][^>]*>")
+MONTHS = "ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie"
+MONTH = re.compile(rf"(\d{{1,2}}\s+)?\b({MONTHS})\s+\d{{4}}\b", re.IGNORECASE)  # a month is a date only with a year
 
 
 class BuildError(Exception):
@@ -96,6 +98,10 @@ def validate(content):
     for key in ("app_name", "subject", "subtitle", "greeting", "intro", "documentation", "signoff"):
         if not content.get(key):
             errors.append(f"missing required field: {key}")
+    for key in ("subject", "subtitle"):
+        for match in MONTH.finditer(content.get(key) or ""):
+            if not match.group(1):
+                errors.append(f"{key}: the date '{match.group(2)} …' has no day — write e.g. '18 {match.group(2)}'")
     if not content.get("features") and not content.get("improvements") and not content.get("fixes"):
         errors.append("nothing to announce: features, improvements and fixes are all empty")
     if not content.get("theme", {}).get("primary"):
