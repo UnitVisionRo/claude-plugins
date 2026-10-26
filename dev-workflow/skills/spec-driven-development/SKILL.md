@@ -144,6 +144,8 @@ STEP 2 — IMPLEMENTATION LOOP
         in this step, contrary to what the skill says. **Reviews** are done **per chunk**.
       Implementer subagents don't load this skill, so paste the Design principles section
       into every implementer's prompt.
+      Every implementer's prompt names the test files that cover its work: implementers run
+      those, never the full suites (`dev-workflow:automated-tests`).
   2b. Self review the chunk with a reviewer subagent other than its implementer.
   2c. If review found issues: fix them, then return to STEP 2a
       If review is clean: proceed to next chunk
@@ -153,7 +155,8 @@ STEP 2 — IMPLEMENTATION LOOP
 </for-each-chunk>
 
 STEP 3 — SUBAGENT REVIEW LOOP
-  3.a Use a subagent (model: opus) to perform a review of the whole phase implementation. If all good, commit the phase and proceed to STEP 4;
+  3.a Use a subagent (model: opus) to perform a review of the whole phase implementation. If all good, run the full
+      suites once (`FULL_SUITE=1`, `dev-workflow:automated-tests`), commit the phase and proceed to STEP 4;
       otherwise go to 3.b
   3.b If review found issues, fix them with subagents. Choose suitable models for each fix:
       simple fixes -> fast / cheap model, complex fix -> capable / more expensive models.

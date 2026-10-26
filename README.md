@@ -9,12 +9,13 @@ installing, not the repository name.
 
 ## At a glance
 
-**6 plugins, 10 skills.** Skills are invoked as `<plugin>:<skill>`. "Always-on" is what a
+**6 plugins, 11 skills.** Skills are invoked as `<plugin>:<skill>`. "Always-on" is what a
 plugin's descriptions cost in *every* session; "on invoke" is paid only when a skill fires.
 
 | plugin | skill | fires | always-on | on invoke |
 |---|---|---|---|---|
 | **`dev-workflow`** | `spec-driven-development` | automatically | ~120 | ~3.3k |
+| | `automated-tests` | automatically | ~85 | ~3.8k |
 | | `git-commit-message` | automatically | ~20 | ~1.7k |
 | | `clickup-task-updates` | automatically | ~110 | ~1.4k |
 | **`project-tooling`** | `run-app` | automatically | ~90 | ~3.4k |
@@ -25,7 +26,7 @@ plugin's descriptions cost in *every* session; "on invoke" is paid only when a s
 | **`help-docs`** | `install-help-docs` | `/install-help-docs` | ~90 | ~2.3k |
 | **`client-comms`** | `release-notes` | via the app's local skill | ~60 | ~2.8k |
 
-All six enabled costs roughly **860 tokens** in every session — `dev-workflow` ~259,
+All six enabled costs roughly **945 tokens** in every session — `dev-workflow` ~344,
 `project-tooling` ~230, `scaffold` ~139, `help-docs` ~90, `database` ~81, `client-comms` ~60. Disable what a project
 does not need; `scaffold` and `help-docs` are the usual candidates, since both do their work
 once and then never again.
@@ -82,10 +83,21 @@ so pick the ones a given project actually needs.
 | skill | |
 |---|---|
 | `spec-driven-development` | The phase → chunk → review workflow: where specs and plans live, how code cites them, when to commit. **Overrides the `superpowers` plugin** on review granularity, committing, and spec locations. |
+| `automated-tests` | Writing and running the backend pytest, Vitest and Playwright suites of a FastAPI + Nuxt project: test databases and isolation, speed budgets, and **targeted runs while iterating, the full suites once before a commit**. |
 | `git-commit-message` | Commit messages written for business stakeholders, not developers. Asks for the tracker link. |
 | `clickup-task-updates` | When to write to a tracker task, and what belongs in the description vs a comment. |
 
 Fires automatically. Worth having on everywhere.
+
+`automated-tests` is generic, like `release-notes`: each project keeps a small **local** skill at
+`.claude/skills/automated-tests/SKILL.md` that invokes `dev-workflow:automated-tests` and supplies its facts —
+folders, commands, database names, ports, helpers, timings. Start it from
+`dev-workflow/skills/automated-tests/references/local-skill-template.md`.
+
+The plugin also ships a **`PreToolUse` hook** (`hooks/scoped-tests.py`) that denies an unscoped pytest, Vitest
+or Playwright run unless the command is prefixed `FULL_SUITE=1`. It is **opt-in**: it acts only in a project that
+has that local skill, and does nothing anywhere else. A project that registered its own copy of the hook should
+drop it, or every unscoped run is denied twice. Its checks: `python3 -B dev-workflow/hooks/test_scoped_tests.py`.
 
 ### `project-tooling` — running and maintaining a project
 

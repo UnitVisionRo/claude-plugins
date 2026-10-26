@@ -1,8 +1,8 @@
 {
   "name": "dev-workflow",
   "displayName": "Dev Workflow",
-  "version": "0.1.4",
-  "description": "Development workflow skills shared across projects: the spec-driven phase/chunk workflow, business-readable Git commit messages, and the discipline for writing progress back to an issue tracker.",
+  "version": "0.2.0",
+  "description": "Development workflow skills shared across projects: the spec-driven phase/chunk workflow, writing and running automated tests (with a hook that keeps test runs targeted until a commit), business-readable Git commit messages, and the discipline for writing progress back to an issue tracker.",
   "author": {
     "name": "Bogdan Coman",
     "email": "bogdan.coman@unitvision.ro"
@@ -15,6 +15,10 @@
     "issue-tracker",
     "spec",
     "planning",
-    "review"
+    "review",
+    "testing",
+    "pytest",
+    "vitest",
+    "playwright"
   ]
 }
