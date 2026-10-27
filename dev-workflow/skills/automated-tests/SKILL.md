@@ -27,9 +27,9 @@ While working on a change, run **only the tests that cover it**: the affected py
 Playwright spec(s). Shared code (a store, an API wrapper, an endpoint several screens use) justifies a **wider
 targeted** run -- more files named -- never an unscoped one.
 
-The **full suites run once, right before a commit the user ordered** (in `dev-workflow:spec-driven-development`,
-also before the STEP 3 phase commit), or when the user asks for a full run, with the command prefixed
-`FULL_SUITE=1`:
+The **full suites run once, right before a commit the user ordered**, or when the user asks for a full run. In
+`dev-workflow:spec-driven-development` they run once, after the human approves the final review of the
+implementation. Every phase or review-fix commit before that runs only the tests covering its changes. A full run prefixes the command with `FULL_SUITE=1`:
 
 ```bash
 FULL_SUITE=1 python -B -m pytest        # + the project's -n, if it has outgrown a serial run

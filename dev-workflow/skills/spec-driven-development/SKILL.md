@@ -7,7 +7,8 @@ description: "The phase → chunk → review workflow for planning and implement
 
 The workflow for designing and implementing functional specs: a feature is designed into a
 spec, each phase of the spec is split into chunks, each chunk is implemented and reviewed, and
-the phase is reviewed as a whole before a human sees it.
+the phase is reviewed as a whole before a human sees it. The human reviews at the checkpoints
+chosen once the spec is split into phases.
 
 ## ⚠️ Precedence over the `superpowers` plugin
 
@@ -21,7 +22,7 @@ When `superpowers` is loaded, the rules below win. Where they are silent, follow
 | Design docs | `brainstorming`: write to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit it | Specs live where **the project's `CLAUDE.md`** says (see Spec and plan file locations) and are **not** committed on the skill's own initiative. |
 | Finishing a branch | `finishing-a-development-branch` decides how to integrate | The phase ends at **STEP 5**; integration is the user's call. |
 | Design questions | `brainstorming`: one question per message | Ask in **rounds** through `AskUserQuestion`, each as full as the tool allows — see Designing the spec. |
-| Design gates | `brainstorming` HARD-GATE: after the written spec, the human also reviews the implementation plan and chooses an execution method | The human gates end at the **written-spec review** — see Designing the spec. No plan review, no execution-method question; the next human gate is STEP 4. |
+| Design gates | `brainstorming` HARD-GATE: after the written spec, the human also reviews the implementation plan and chooses an execution method | The human gates end at the **written-spec review** — see Designing the spec. No plan review, no execution-method question; the only question before the work starts is the review cadence, and the next human gate is STEP 4 at the first checkpoint. |
 | After the spec | `brainstorming`: invoke `writing-plans` next | Split the spec into phases and start **The workflow** at STEP 0. |
 | When to plan | `writing-plans`: before touching code on any multi-step task | A chunk gets a plan **only** when STEP 1 says so; every other chunk goes straight to STEP 2. |
 | Plan detail | `writing-plans` "No Placeholders": every code step carries the complete code | Plans are **design-level** — see STEP 1. Code appears only where prose cannot pin the result. |
@@ -90,8 +91,43 @@ Besides the question rounds, the architectural path has exactly two approval gat
 1. approval of each design section during the dialogue;
 2. review of the written spec.
 
-Once the spec is approved, split it into phases (unless the spec already defines them) and
-start the first phase at STEP 0. The human sees the work next at STEP 4.
+Once the spec is approved, split it into phases (unless the spec already defines them), ask
+the review cadence (see Human review cadence) and start the first phase at STEP 0. The human
+sees the work next at STEP 4 of the first checkpoint.
+
+## Human review cadence
+
+The human chooses when STEP 4 happens. The choice moves STEP 4 and STEP 5 and nothing else:
+every phase still gets its STEP 0 overview, its chunk loop, its STEP 3 review, its test run
+and its STEP 3 commit.
+
+- **More than one phase:** right after the phase split, ask one `AskUserQuestion` question
+  listing the phases and offering these options, your recommendation first and labeled
+  "(Recommended)":
+  1. **Review each phase** — STEP 4 after every phase.
+  2. **Review at checkpoints** — STEP 4 after named groups of phases. The option names the
+     groups, e.g. "Review 1 after phases 1–4, review 2 after phases 5–7".
+  3. **Review once at the end** — STEP 4 only after the last phase.
+- **One phase:** don't ask; STEP 4 follows that phase.
+
+Base the recommendation on the complexity of the implementation:
+
+| Phases | Recommend |
+|---|---|
+| Each phase settles something the later ones build on that is costly to undo (data model, migrations, core interfaces), or carries UX or business decisions the human must see | Review each phase |
+| Such a foundation exists only in some phases | Checkpoints, each closing right after a foundational phase or a coherent user-visible slice |
+| Few, small or mechanical phases following existing patterns | Review once at the end |
+
+State the reason for the recommendation in the question.
+
+Write the schedule at the top of every phase overview (STEP 0), with whether that phase closes
+a checkpoint. A phase that closes no checkpoint goes from STEP 3 straight to the next phase's
+STEP 0. At a checkpoint, STEP 4 covers every phase since the previous checkpoint, and STEP 5
+then runs for each of them.
+
+The schedule decides only when the human reviews. A question that comes up mid-phase — from a
+subagent, or a gap in the spec — goes to the human when it arises. If the human asks to change
+the schedule, the new one applies from the next phase.
 
 ## The workflow
 
@@ -155,24 +191,30 @@ STEP 2 — IMPLEMENTATION LOOP
 </for-each-chunk>
 
 STEP 3 — SUBAGENT REVIEW LOOP
-  3.a Use a subagent (model: opus) to perform a review of the whole phase implementation. If all good, run the full
-      suites once (`FULL_SUITE=1`, `dev-workflow:automated-tests`), commit the phase and proceed to STEP 4;
-      otherwise go to 3.b
+  3.a Use a subagent (model: opus) to perform a review of the whole phase implementation. If all good, run the
+      tests covering the phase's changes: every test file its chunks named, in one targeted run
+      (`dev-workflow:automated-tests`). The full suites never run here, not even in the last phase. Then
+      commit the phase and proceed to STEP 4 if this phase closes a review checkpoint, or to the next
+      phase's STEP 0 if it does not (see Human review cadence); otherwise go to 3.b
   3.b If review found issues, fix them with subagents. Choose suitable models for each fix:
       simple fixes -> fast / cheap model, complex fix -> capable / more expensive models.
       After fixes, proceed to 3.a, re-review. Don't ask for a re-review of what was already
       reviewed and not impacted by the fixes.
 
-STEP 4 — HUMAN REVIEW (human evaluates the whole phase)
+STEP 4 — HUMAN REVIEW (at a checkpoint: human evaluates every phase since the previous one)
   - DO NOT commit per fix during the human review. Fixes made in response to the human's
     review comments accumulate UNCOMMITTED in the working tree and are ALL committed together
     at the END of STEP 4 — and only when the human says so. (This is the opposite of STEP 3,
     whose review-fix commits are fine; the difference is that STEP 4 is interactive with the
     human, who is still reviewing.)
+  - Before that commit, run the tests covering the fixes.
+  - **Full suites:** the one full run of the implementation (`FULL_SUITE=1`) happens when the human
+    approves the final checkpoint, before its fixes are committed. If it fails, fix, re-run and
+    re-surface for the human.
   - If approved: proceed to STEP 5
   - If minor issues: fix them (accumulate uncommitted, per the rule above); re-surface for the
     human
-  - If major/structural issues: return to STEP 0
+  - If major/structural issues: return to STEP 0 of the earliest affected phase
 
 STEP 5 — UPDATE SPEC TRACKER
 </workflow>
