@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugins shared across Bogdan's projects.",
-    "version": "0.1.2"
+    "version": "0.1.3"
   },
   "plugins": [
     {
@@ -36,8 +36,8 @@
     {
       "name": "project-tooling",
       "source": "./project-tooling",
-      "description": "Manually-invoked project tooling: run and screenshot the app, and audit uv (Python) or npm (frontend) dependencies for updates and breaking changes.",
-      "version": "0.1.1",
+      "description": "Manually-invoked project tooling: run and screenshot the app, audit uv (Python) or npm (frontend) dependencies for updates and breaking changes, and coordinate work across Claude sessions from a to-do tracker (handover, orchestrate).",
+      "version": "0.2.0",
       "author": {
         "name": "Bogdan Coman"
       },
@@ -49,7 +49,11 @@
         "npm",
         "dependencies",
         "updates",
-        "maintenance"
+        "maintenance",
+        "handover",
+        "orchestration",
+        "sessions",
+        "worktree"
       ],
       "category": "tools"
     },

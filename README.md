@@ -9,7 +9,7 @@ installing, not the repository name.
 
 ## At a glance
 
-**6 plugins, 11 skills.** Skills are invoked as `<plugin>:<skill>`. "Always-on" is what a
+**6 plugins, 13 skills.** Skills are invoked as `<plugin>:<skill>`. "Always-on" is what a
 plugin's descriptions cost in *every* session; "on invoke" is paid only when a skill fires.
 
 | plugin | skill | fires | always-on | on invoke |
@@ -21,14 +21,16 @@ plugin's descriptions cost in *every* session; "on invoke" is paid only when a s
 | **`project-tooling`** | `run-app` | automatically | ~90 | ~3.4k |
 | | `check-updates-npm` | `/check-updates-npm` | ~80 | ~1.5k |
 | | `check-updates-uv` | `/check-updates-uv` | ~60 | ~650 |
+| | `handover` | `/handover` | ~50 | ~1.9k |
+| | `orchestrate` | `/orchestrate` | ~50 | ~1.7k (+ reads `handover`) |
 | **`database`** | `alembic` | automatically | ~80 | ~1.7k |
 | **`scaffold`** | `fastapi-nuxt-scaffold` | `/fastapi-nuxt-scaffold` | ~140 | ~5.3k |
 | **`help-docs`** | `install-help-docs` | `/install-help-docs` | ~90 | ~2.3k |
 | **`client-comms`** | `release-notes` | via the app's local skill | ~60 | ~2.8k |
 
-All six enabled costs roughly **945 tokens** in every session — `dev-workflow` ~344,
-`project-tooling` ~230, `scaffold` ~139, `help-docs` ~90, `database` ~81, `client-comms` ~60. Disable what a project
-does not need; `scaffold` and `help-docs` are the usual candidates, since both do their work
+All six enabled costs roughly **1,045 tokens** in every session — `dev-workflow` ~344,
+`project-tooling` ~330, `scaffold` ~139, `help-docs` ~90, `database` ~81, `client-comms` ~60.
+Disable what a project does not need; `scaffold` and `help-docs` are the usual candidates, since both do their work
 once and then never again.
 
 ## Install
@@ -106,13 +108,20 @@ drop it, or every unscoped run is denied twice. Its checks: `python3 -B dev-work
 | `run-app` | Build, launch and screenshot the app (FastAPI + Nuxt). Discovers ports from the project's dev-server config; ships `driver.sh` for headless Edge under WSL2. |
 | `check-updates-uv` | Outdated Python packages, with breaking-change notes and `uv sync` commands. |
 | `check-updates-npm` | Outdated npm packages, grouped by what must move together. |
+| `handover` | `/handover #N [#M…] [to <session>\|new] [work isolated\|main checkout]`: builds a self-contained brief (item text, code pointers, meeting-transcript quotes with timestamped links, the handover rules verbatim — including creating a tracker implementation task before any work — and the project's standing rules), starts a `claude --bg` session or messages an existing one, and records the handoff in the to-do tracker as `name` (`session ID`). Also covers receiving `done: #N`: verify the commits, move the item to Done, flag extra scope. |
+| `orchestrate` | `/orchestrate #x, #y` or `/orchestrate <session names>`: for those items only, one isolated session per item, merge each branch into local `main` on `done: #N`, collect the screenshots each change needs, then subagents retake the screenshots and run the full suites once on `main`; failures go back to the owning session, and when everything is green each session removes its worktree and branch. |
 
 `run-app` fires automatically — ask it to run, start or screenshot the app and it activates.
 It does start long-running dev servers, so the skill itself requires your go-ahead before
 launching anything.
 
-The two dependency checkers are **slash-commands only** (`/check-updates-uv`,
-`/check-updates-npm`) and never fire on their own.
+The two dependency checkers, `handover` and `orchestrate` are **slash-commands only** (`/check-updates-uv`,
+`/check-updates-npm`, `/handover`, `/orchestrate`) and never fire on their own.
+
+`handover` and `orchestrate` are meant for the one session that keeps a project's to-do tracker and hands work to
+other sessions. Nothing project-specific is in them: the tracker path, its header's handover rules, the recording
+source, worktree setup, test-DB and port scheme, full-suite commands and the screenshot instance all come from the
+project's CLAUDE.md, local skills or memory, and the skills stop and ask when one is missing.
 
 ### `database` — schema and migrations
 
