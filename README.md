@@ -9,7 +9,7 @@ installing, not the repository name.
 
 ## At a glance
 
-**6 plugins, 13 skills.** Skills are invoked as `<plugin>:<skill>`. "Always-on" is what a
+**6 plugins, 14 skills.** Skills are invoked as `<plugin>:<skill>`. "Always-on" is what a
 plugin's descriptions cost in *every* session; "on invoke" is paid only when a skill fires.
 
 | plugin | skill | fires | always-on | on invoke |
@@ -23,13 +23,14 @@ plugin's descriptions cost in *every* session; "on invoke" is paid only when a s
 | | `check-updates-uv` | `/check-updates-uv` | ~60 | ~650 |
 | | `handover` | `/handover` | ~50 | ~1.9k |
 | | `orchestrate` | `/orchestrate` | ~50 | ~1.7k (+ reads `handover`) |
+| | `demo-mail-sink` | automatically | ~70 | ~1.7k |
 | **`database`** | `alembic` | automatically | ~80 | ~1.7k |
 | **`scaffold`** | `fastapi-nuxt-scaffold` | `/fastapi-nuxt-scaffold` | ~140 | ~5.3k |
 | **`help-docs`** | `install-help-docs` | `/install-help-docs` | ~90 | ~2.3k |
 | **`client-comms`** | `release-notes` | via the app's local skill | ~60 | ~2.8k |
 
-All six enabled costs roughly **1,045 tokens** in every session — `dev-workflow` ~344,
-`project-tooling` ~330, `scaffold` ~139, `help-docs` ~90, `database` ~81, `client-comms` ~60.
+All six enabled costs roughly **1,115 tokens** in every session — `dev-workflow` ~344,
+`project-tooling` ~400, `scaffold` ~139, `help-docs` ~90, `database` ~81, `client-comms` ~60.
 Disable what a project does not need; `scaffold` and `help-docs` are the usual candidates, since both do their work
 once and then never again.
 
@@ -106,12 +107,17 @@ drop it, or every unscoped run is denied twice. Its checks: `python3 -B dev-work
 | skill | |
 |---|---|
 | `run-app` | Build, launch and screenshot the app (FastAPI + Nuxt). Discovers ports from the project's dev-server config; ships `driver.sh` for headless Edge under WSL2. |
+| `demo-mail-sink` | Routes a throwaway demo, screenshot or end-to-end instance's outbound mail to a dependency-free local SMTP server (`smtp_sink.py`, copied into the app's `<back>/scripts/`) that accepts and discards everything — so seeding sends nothing real, yet the state apps store only after a successful send still appears. Runs in-process on a free port for the e2e instance, or as its own process (start/stop by port) for a hand-built demo instance. |
 | `check-updates-uv` | Outdated Python packages, with breaking-change notes and `uv sync` commands. |
 | `check-updates-npm` | Outdated npm packages, grouped by what must move together. |
 | `handover` | `/handover #N [#M…] [to <session>\|new] [work isolated\|main checkout]`: builds a self-contained brief (item text, code pointers, meeting-transcript quotes with timestamped links, the handover rules verbatim — including creating a tracker implementation task before any work — and the project's standing rules), starts a `claude --bg` session or messages an existing one, and records the handoff in the to-do tracker as `name` (`session ID`). Also covers receiving `done: #N`: verify the commits, move the item to Done, flag extra scope. |
 | `orchestrate` | `/orchestrate #x, #y` or `/orchestrate <session names>` creates an **orchestration group** of exactly those items: one isolated session per item, each branch merged into local `main` on `done: #N`, the screenshots each change needs collected. Once **all of that group's** items are merged, subagents retake its screenshots and run the full suites on `main`; failures go back to the owning session, and when the group is green its sessions remove their worktrees and branches. Each call makes a separate group, so a later `/orchestrate a, b` never delays an earlier group's final run. Also `status`, `resume`, `add #n to <group>`. |
 
 `run-app` fires automatically — ask it to run, start or screenshot the app and it activates.
+`demo-mail-sink` fires when a demo or test instance is being built or run. The sink itself is copied into each app,
+so the e2e suite and the help-docs screenshot procedure work without the plugin installed. The skills that rely on
+it — `automated-tests` (end-to-end), `install-help-docs` and the help-docs authoring skill it installs — check that
+both the skill and the app's copy are present, and remind you how to add whichever is missing.
 It does start long-running dev servers, so the skill itself requires your go-ahead before
 launching anything.
 

@@ -161,12 +161,25 @@ One file or folder: `npx vitest run <path>`; one test: add `-t "<title>"`.
 
 ## End-to-end (Playwright)
 
+**Mail sink check — once per session, before the first e2e run or e2e change.** The e2e instance needs the local
+mail sink. Check the three parts; for each one missing, **remind the user** what is missing and how to add it, then
+carry on (a closed port is safe, only less useful). Do not add them yourself unasked.
+- The skill: `project-tooling:demo-mail-sink` is in this session's skill list. Missing: from the repo root,
+  `claude plugin install project-tooling@bogdan-plugins --scope project`, then a new session.
+- The script: `<back>/scripts/smtp_sink.py` exists in the repo. Missing: copy it from that skill's directory.
+- The wiring: `<back>/scripts/e2e_instance.py` starts it (`start_in_background`) instead of pointing mail at a
+  closed port (`mail_port` 9). Missing: the skill's "Use 1" says how.
+
 - A real Chromium against the whole application in the production topology. `npm run test:e2e`:
   - builds the app for production into `.e2e/` (git-ignored), away from the `.nuxt/` a running `npm run dev`
     works in and the build the development backend serves;
   - starts the backend's e2e instance script on its own port (plain http on 127.0.0.1, no dev proxy), which
     rebuilds **its own database** (`E2E_DB_NAME`, ending in `_test`, never the backend suite's) with the
-    administrator the tests sign in as, and sends mail to a closed port.
+    administrator the tests sign in as, and sends mail to a discard sink it starts in its own process
+    (`<back>/scripts/smtp_sink.py`, from `project-tooling:demo-mail-sink`). Not a closed port: the app stores
+    some state only after a send is accepted (verification codes, pending invitations), so with every send failing
+    those flows cannot be tested. An instance script still using a closed port (`mail_port=9`) should switch; the
+    skill says how.
 
   It never reuses a server already answering on its port.
 - One spec: `npm run test:e2e -- <spec>`. `E2E_REUSE_BUILD=1` skips the build while writing tests that don't change

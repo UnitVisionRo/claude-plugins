@@ -1,8 +1,8 @@
 {
   "name": "project-tooling",
   "displayName": "Project Tooling",
-  "version": "0.2.0",
-  "description": "Manually-invoked project tooling: run and screenshot the app, audit uv (Python) or npm (frontend) dependencies for updates and breaking changes, and coordinate work across Claude sessions from a to-do tracker (handover, orchestrate).",
+  "version": "0.3.0",
+  "description": "Manually-invoked project tooling: run and screenshot the app, send a demo instance's mail to a local discard sink, audit uv (Python) or npm (frontend) dependencies for updates and breaking changes, and coordinate work across Claude sessions from a to-do tracker (handover, orchestrate).",
   "author": {
     "name": "Bogdan Coman",
     "email": "bogdan.coman@unitvision.ro"
@@ -19,6 +19,8 @@
     "handover",
     "orchestration",
     "sessions",
-    "worktree"
+    "worktree",
+    "smtp",
+    "demo"
   ]
 }

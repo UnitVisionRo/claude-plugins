@@ -304,6 +304,32 @@ stays** and is reused, so steps 3 and 5 are only needed the first time or after 
    instead of `<working-ports>`, database `<demo-db>`, the app's own base address, and any
    outbound notifications **disabled** so seeding sends nothing to anyone>.
 
+   **Outbound mail goes to a local discard sink, never out.** Disabling notifications does not
+   make seeding silent: verification codes and invitations are sent regardless, and the copied
+   configuration would send them through the real mail account. The sink also matters for the
+   captures: a verification code or an invitation is stored only after its e-mail has been
+   accepted, so without it those screens have nothing to show. Point the instance's mail settings
+   at the sink — <mail configuration keys: server `127.0.0.1`, port `2525`, STARTTLS / SSL /
+   credentials / certificate validation off, username and password empty> — editing only those
+   keys, and start the sink, the app's own copy, before the servers (step 4); leave it running while
+   the instance runs:
+
+   ```bash
+   python3 <back>/scripts/smtp_sink.py   # listens on 127.0.0.1:2525, one line per message
+   ```
+
+   It is a dependency-free SMTP server that accepts every message and discards it.
+
+   **Check first that the sink is installed**, and if a part is missing, **stop and remind the
+   user** what is missing and how to add it — without the sink the demo instance would either
+   send real mail or have nothing to capture, so do not go on without it, and do not add it
+   unasked:
+   - the skill `project-tooling:demo-mail-sink` is in this session's skill list — missing: from the
+     repository root, `claude plugin install project-tooling@bogdan-plugins --scope project`, then
+     a new session;
+   - the script `<back>/scripts/smtp_sink.py` exists — missing: copy it from that skill's
+     directory (the skill explains it).
+
 3. **The database**, new and empty, then the schema and reference data:
 
    ```bash
@@ -344,7 +370,9 @@ stays** and is reused, so steps 3 and 5 are only needed the first time or after 
    **Open the resulting PNG** and check it against what the table says before referencing it. A
    failed step leaves a diagnostic capture in the system temp folder, not in `docs/screenshots/`.
 
-7. **Afterwards**, stop the demo servers and remove the worktree
+7. **Afterwards**, stop the demo servers and the mail sink by port (`ss -ltnp` on
+   `<demo-ui-port>`, `<demo-api-port>` and `2525` → `kill <pid>`; never `pkill -f` on the worktree
+   path) and remove the worktree
    (`git worktree remove --force <demo-worktree-path>`) — it is cheap to recreate, and a stale
    one only invites captures from old code. Keep the database for next time; when the schema has
    moved on, drop it and start again from step 3. Then rebuild whatever embeds the screenshots

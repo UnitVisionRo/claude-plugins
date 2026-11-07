@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugins shared across Bogdan's projects.",
-    "version": "0.1.3"
+    "version": "0.1.4"
   },
   "plugins": [
     {
       "name": "dev-workflow",
       "source": "./dev-workflow",
       "description": "Development workflow skills shared across projects: the spec-driven phase/chunk workflow, writing and running automated tests (with a hook that keeps test runs targeted until a commit), business-readable Git commit messages, and the discipline for writing progress back to an issue tracker.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "author": {
         "name": "Bogdan Coman"
       },
@@ -36,8 +36,8 @@
     {
       "name": "project-tooling",
       "source": "./project-tooling",
-      "description": "Manually-invoked project tooling: run and screenshot the app, audit uv (Python) or npm (frontend) dependencies for updates and breaking changes, and coordinate work across Claude sessions from a to-do tracker (handover, orchestrate).",
-      "version": "0.2.0",
+      "description": "Manually-invoked project tooling: run and screenshot the app, send a demo instance's mail to a local discard sink, audit uv (Python) or npm (frontend) dependencies for updates and breaking changes, and coordinate work across Claude sessions from a to-do tracker (handover, orchestrate).",
+      "version": "0.3.0",
       "author": {
         "name": "Bogdan Coman"
       },
@@ -53,7 +53,9 @@
         "handover",
         "orchestration",
         "sessions",
-        "worktree"
+        "worktree",
+        "smtp",
+        "demo"
       ],
       "category": "tools"
     },
@@ -97,7 +99,7 @@
       "name": "help-docs",
       "source": "./help-docs",
       "description": "Installs in-app user help documentation into a Nuxt + Vuetify application: Markdown in docs/help compiled at build time, contextual help per page, a searchable topic browser, and an authoring skill written into the app itself.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Bogdan Coman"
       },

@@ -57,6 +57,8 @@ Targeted while iterating; the full runs once, right before a commit the user ord
 
 - Instance: `<back>/scripts/e2e_instance.py` on port <8031>, database `E2E_DB_NAME` default <`<app>_e2e_test`>,
   app under <`/gui/`>.
+- Mail: the instance starts `<back>/scripts/smtp_sink.py` in-process (`start_in_background()`, a free port) and
+  points <its mail keys: `mail_server`, `mail_port`, ...> at it; every send is accepted and discarded.
 - Data helpers: <`<test root>/e2e/data.ts` with `unique()`, `ui.ts` for forms>.
 - A worktree also needs: <`<back>/.env`, `<back>/.venv`, generated files, `<front>/devServer.js`> linked.
 - Icon-only buttons: <how the button wrapper gives them an accessible name: `title`, or an explicit

@@ -247,6 +247,13 @@ in the application's dependency tree, lockfile or image. Copy
 must be visible" is the contract that makes a screenshot reproducible by someone who did not take
 it.
 
+**Check the mail sink**, which the demo instance procedure relies on (authoring skill, step 2).
+If the skill `project-tooling:demo-mail-sink` is not in this session's skill list, or the app has no
+`<back>/scripts/smtp_sink.py`, **remind the user** which is missing and how to add it — the plugin
+with `claude plugin install project-tooling@bogdan-plugins --scope project` from the repository root
+(then a new session), the script by copying it from that skill's directory — and offer to do the
+copy. Do not report the install as done while either is missing.
+
 Then: `.gitignore` the folder's `node_modules` and the demo credentials file;
 `.dockerignore` the `node_modules` if the image ships the documentation; and fill in the demo
 instance procedure in the authoring skill, by asking how a throwaway instance of this application
@@ -325,7 +332,9 @@ image with no alt text.
   job, because building and seeding a throwaway instance depends entirely on how the application
   is deployed and what its data looks like. The authoring skill carries the *shape* of that
   procedure — separate database, seeded through the app's real endpoints, torn down afterwards —
-  with placeholders for this app's specifics. Capturing against the working database is how real
-  customer data ends up in published documentation, so the procedure is not optional, only
-  un-generalizable.
+  with placeholders for this app's specifics, and sends the instance's outbound mail to a local
+  discard sink (the one part that *is* generic: copy `smtp_sink.py` from
+  `project-tooling:demo-mail-sink` into the app if it has none). Capturing
+  against the working database is how real customer data ends up in published documentation, so
+  the procedure is not optional, only un-generalizable.
 - **No access control.** contract §6.
