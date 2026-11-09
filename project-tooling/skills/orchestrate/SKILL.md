@@ -109,16 +109,19 @@ rule into that session themselves, or the loop will stop at each fix waiting for
 4. `git merge --no-ff --no-edit <branch>`.
 5. **Conflict** → `git merge --abort` immediately, then send the session: "rebase `<branch>` on `main`, resolve,
    re-run your targeted tests, report `done: #N` again".
-6. Move the item to Done with session `name` (`ID`), date, its commits and the **merge hash**. Update its group's
-   "merged so far" in the orchestration note.
+6. Move the item to Done with session `name` (`ID`), date, its commits and the **merge hash**, the same entry a
+   plain handover gets. Update its group's "merged so far" in the orchestration note. If you mark the Done entry
+   with the group or round while the group is open, that label goes at cleanup (step 6).
 7. If that was the group's last member, start the group's final phase (step 4).
 
 Merges from different groups land on the same local `main`, one at a time; never run two merges at once.
 
 # 3. Collect screenshots
 
-Keep one tracker item per group, e.g. "Screenshots to (re)take (O2)", with each session's list grouped per item and
-labelled with that item's merge hash.
+Collect each group's screenshot list in the tracker while the group is open: in the project's screenshots item if
+it has one, under a heading for the group, or else in a temporary item, e.g. "Screenshots to (re)take (O2)". Group
+the lines per item, labelled with that item's merge hash. The list is **temporary**: it is removed at cleanup
+(step 6), and a shared screenshots item goes back to its plain "nothing open" state once no group has a list in it.
 
 # 4. When every member of a group is merged
 
@@ -188,14 +191,24 @@ A group is green when its last full-suite run has no failure owned by one of its
 3. Drop any databases it still has.
 4. Reply `cleaned: <branch>`.
 
-Verify each with `git worktree list` and `git branch --list <branch>`. Then remove **that group** from the
-orchestration note (the whole note once no group is open) and tell the user: the group, items merged (with hashes),
+Verify each with `git worktree list` and `git branch --list <branch>`.
+
+**Remove every record of the group** once its screenshots are done and every session has replied `cleaned:`. The
+tracker keeps an orchestration only while it is in progress; no history afterwards:
+
+- its entry in the header's orchestration note (the whole note, pointer line included, once no group is open);
+- its screenshot list and any per-round history (a shared screenshots item goes back to "nothing open");
+- every group or round label it left elsewhere, e.g. "Orchestration O2" or "round 2" in Done entries.
+
+The Done entries themselves stay: item, session `name` (`ID`), date, commits, merge hash.
+
+Then tell the user: the group, items merged (with hashes),
 the tested commit and suite counts, the number of full-suite runs, screenshots done, anything left open, and any failure handed to another group.
 
 # The tracker note
 
 Keep one **Orchestration** note in the tracker header while any group is open, so the state survives context
-compaction. One entry per group:
+compaction. It is working state, not history: each group's entry goes at that group's cleanup (step 6). One entry per group:
 
 - group ID and creation date;
 - members: item, session `name` (`ID`), branch, worktree;

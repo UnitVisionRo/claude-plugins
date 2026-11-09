@@ -1,7 +1,7 @@
 {
   "name": "project-tooling",
   "displayName": "Project Tooling",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Manually-invoked project tooling: run and screenshot the app, send a demo instance's mail to a local discard sink, audit uv (Python) or npm (frontend) dependencies for updates and breaking changes, and coordinate work across Claude sessions from a to-do tracker (handover, orchestrate).",
   "author": {
     "name": "Bogdan Coman",
