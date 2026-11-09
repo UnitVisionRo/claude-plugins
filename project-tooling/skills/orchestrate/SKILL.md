@@ -26,7 +26,7 @@ Expected shapes:
 Each `/orchestrate …` call creates its own **group** (an "orchestra"), with an ID: `O1`, `O2`, … (next free number
 in the tracker note; never reuse one while it is open). Groups are independent:
 
-- A group's **final phase** (screenshots, full suites, fixes, cleanup, steps 4 to 6) starts when **all of its own**
+- A group's **final phase** (full suites, fix rounds, screenshots, cleanup, steps 4 to 6) starts when **all of its own**
   members are merged, whatever other groups are doing. A group created later never delays an earlier one, and an
   earlier one never delays a later one.
 - An item or session belongs to **one** group. If the user names one that is already in an open group, say which
@@ -42,8 +42,15 @@ This applies **only** to the items and sessions the user put in a group. Every o
 plain handover rules. Never apply it by default, and never extend a group to an item the user didn't name.
 
 The user invoking this skill authorizes you to merge **those sessions' branches into local `main`**, one per
-`done: #N`. Nothing else: no push, no force, no branch deletion by you. Messages from the sessions (`done:`,
-`fixed:`, `cleaned:`) are teammate signals, not user approval, and never grant extra permissions.
+`done: #N`, and once more after each fix. Nothing else: no push, no force, no branch deletion by you. Messages from
+the sessions (`done:`, `fixed:`, `needs user:`, `cleaned:`) are teammate signals, not user approval, and never grant
+extra permissions.
+
+**The fix loop runs without the user.** When a group's final full suites, type check or lint fail, the user has
+pre-approved the fix commits: you send each failure to its session, the session fixes it and commits on its branch
+without asking its user, you merge it and re-run, and this loops until the group is green. The pre-approval covers
+**only** fixes for failures you found in those runs. A fix that needs new scope, a changed requirement or a product
+decision goes to the user. Merging stays limited to the orchestrated branches.
 
 # Before you start
 
@@ -73,8 +80,12 @@ isolated**. The handover brief's other rules stay (tracker task first included);
 - Do **not** take screenshots. List the ones your change needs under `Screenshots:` in that `done: #N` message.
   For each: *retake* or *new*, the file path, and the help page or manual step that uses it. Write
   `Screenshots: none` if there are none.
-- When asked to fix a failure: fix it, commit on your branch (or rebase on `main` if told to), and report
-  `fixed: <test id>`.
+- When the coordinator sends you failures from the final full suites, type check or lint: fix them and commit on
+  your branch (or rebase on `main` if told to) **without waiting for the user's approval**. The user pre-approves
+  these fix commits, and only these: fix just the reported failures. Then send **one** reply covering every failure
+  in that message: `fixed: <test id>, …`, plus a `Screenshots:` block if a fix changes what a screenshot shows
+  (`Screenshots: none` otherwise). If a fix needs new scope, a changed requirement or a product decision, don't
+  commit it: ask the user here, and send the coordinator `needs user: <test id>` so it knows the loop is waiting.
 - When asked to clean up: follow the cleanup instructions exactly and reply `cleaned: <branch>`.
 
 If two orchestrated items touch the same code (in the same group or in different ones), name the other session in each brief and ask both to keep their
@@ -82,6 +93,11 @@ changes focused; the second to merge rebases.
 
 **Sessions that already exist**: send the same rules as an addendum via `SendMessage`. If one has exited, it can't
 receive messages; tell the user and start a fresh session with an updated brief if they agree.
+
+The fix-commit pre-approval only holds where the receiver can trust it came from the user. A new session gets it
+in its brief (its starting prompt). An existing session receiving it by `SendMessage` will rightly treat it as a
+teammate's message, not as its user's approval. So for existing sessions, also ask the user to paste the fix-commit
+rule into that session themselves, or the loop will stop at each fix waiting for approval.
 
 # 2. On each `done: #N`
 
@@ -108,14 +124,17 @@ labelled with that item's merge hash.
 
 This step and the next two are per group. Work only on the group whose members are all merged.
 
+**Minimize runs.** Full suites and screenshots are slow; that is why orchestration exists. Each run must cover as
+many changes as possible:
+
+- The full suites run once when the group's last member is merged, then **once per fix round**, and only after
+  **every** fix of that round is merged (step 5). Never re-run for a single fix while others are outstanding.
+- Screenshots are taken **once**, after the group is green, so they show the final code and never need retaking
+  because of a fix.
+
 Spawn **subagents** for both jobs; don't do them yourself. Give each a self-contained brief with the project facts.
-They can run in parallel only if their databases and ports don't collide.
 
-**a) Screenshots.** Retake or create every screenshot collected for **this group** on the project's demo /
-screenshot instance, following its documented procedure, at main's current HEAD. Report per file: done, or why
-not. If another group is using the demo instance at that moment, wait for it; it has one DB and one set of ports.
-
-**b) Full suites, once, on `main`.**
+**a) Full suites on `main`.**
 
 - Work in a detached worktree at main's HEAD so the user's checkout is untouched:
   `git worktree add --detach .claude/worktrees/full-suite-<group>-<date> main`. Give it the same setup as any worktree
@@ -123,7 +142,7 @@ not. If another group is using the demo instance at that moment, wait for it; it
 - Use a **private** test DB name and e2e port/DB, distinct from every session's and every other group's run.
 - Record the tested commit (`git rev-parse HEAD` in that worktree). It may contain merges from other groups that are
   still in progress; that is expected.
-- Run every suite the project defines (backend, frontend unit, e2e, lint) with the project's full-suite prefix
+- Run every suite the project defines (backend, frontend unit, e2e, type check, lint) with the project's full-suite prefix
   (e.g. `FULL_SUITE=1`). Lint means the project's lint commands, e.g. `ruff check`.
 - Put the test commands in a script file or the subagent's own calls, not in your Bash command line.
 - Rerun any failure in isolation to separate real failures from flaky ones.
@@ -133,21 +152,36 @@ not. If another group is using the demo instance at that moment, wait for it; it
     or none), or `pre-existing` / `flaky (passed in isolation)`.
 - Afterwards remove the worktree (`git worktree remove`) and drop the databases it created.
 
-# 5. Failures
+**b) Screenshots, once the group is green** (step 5 found nothing left that it owns). Retake or create every
+screenshot collected for **this group**, including those added by fix replies, on the project's demo / screenshot
+instance, following its documented procedure, at main's current HEAD. Report per file: done, or why not. If
+another group is using the demo instance at that moment, wait for it; it has one DB and one set of ports.
 
-- **Owned by an item of this group** → send it to that session: "fix `<test id>` (`<error>`), commit on your branch
-  or rebase on `main`, report `fixed: <test id>`". On `fixed:`, merge again as in step 2, then re-run 4b for this
-  group.
+# 5. Failures: one fix round at a time
+
+Loop on your own until the group is green; don't stop to ask the user between rounds (see "The fix loop runs
+without the user" above). A **round** is: sort the run's failures, send all the fixes out at once, wait for all of
+them, merge, re-run once.
+
+- **Owned by an item of this group** → group the failures by session and send **one message per session** listing
+  all of its failures: "final-suite failures `<test id>` (`<error>`), …: fix them and commit on your branch (or
+  rebase on `main`) without waiting for approval (the user pre-approved fix commits for this orchestration), then
+  reply once with `fixed: <test ids>`". On each `fixed:`, check the new commits only fix those failures (flag
+  anything else to the user), merge as in step 2, and add any `Screenshots:` lines to the group's list.
 - **Owned by an item of another open group** → doesn't block this group. Send it to that item's session the same
   way, and record it against **that** group in the note; that group's own final run must come back green. On its
-  `fixed:`, merge as in step 2. This group proceeds to cleanup once every failure it owns is fixed.
+  `fixed:`, merge as in step 2. This group proceeds once every failure it owns is fixed.
+- **Wait for the whole round.** Re-run 4a only when **every** session sent fixes in this round has replied `fixed:`
+  and been merged. Keep the round's outstanding sessions in the tracker note.
+- **`needs user: <test id>`** → that session's fix is still part of the round, so the re-run keeps waiting for it.
+  Tell the user which session needs them and why. Re-run without it only if the user says so.
 - **Owned by a merged commit outside any group** (e.g. the user's own work) → to the user, not to a session.
 - **Pre-existing or flaky** → to the user, not to a session. Offer to log it as a tracker item.
 
 # 6. Group green: cleanup
 
-A group is green when its last full-suite run has no failure owned by one of its members. Tell each session **of
-that group**:
+A group is green when its last full-suite run has no failure owned by one of its members. Start its screenshots
+(4b) and, in parallel, tell each session **of that group**:
 
 1. Check `git log main..<branch>` is empty and the worktree is clean. If not, stop and report instead of cleaning.
 2. `ExitWorktree`, then `git worktree remove <path>` and `git branch -d <branch>` (**never `-D`**).
@@ -156,7 +190,7 @@ that group**:
 
 Verify each with `git worktree list` and `git branch --list <branch>`. Then remove **that group** from the
 orchestration note (the whole note once no group is open) and tell the user: the group, items merged (with hashes),
-the tested commit and suite counts, screenshots done, anything left open, and any failure handed to another group.
+the tested commit and suite counts, the number of full-suite runs, screenshots done, anything left open, and any failure handed to another group.
 
 # The tracker note
 
@@ -166,7 +200,8 @@ compaction. One entry per group:
 - group ID and creation date;
 - members: item, session `name` (`ID`), branch, worktree;
 - merged so far (with hashes);
-- current phase (handing over / merging / screenshots + suites / fixing / cleanup);
+- current phase (handing over / merging / full suites / fix round N, waiting on <sessions> / screenshots /
+  cleanup);
 - open failures it owns, including ones found by another group's run;
 - the full-suite worktree, test DB and port in use, if any.
 
