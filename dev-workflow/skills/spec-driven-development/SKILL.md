@@ -70,6 +70,31 @@ useless without the file path, because **the same section number appears in mult
 `§4.4` alone cannot be resolved. This maintains traceability between code and the functional
 spec.
 
+## Cross-references are links
+
+In a spec, every reference to another section — of the same spec or of another spec — is a
+Markdown link the reader can click, never bare text. `see §4.4` alone is not acceptable; write
+`see [§4.4](#s4-4)`. The same holds in phase overviews and chunk plans when they cite the spec.
+
+- **Same file:** `[§4.4](#s4-4)`, `[R6.3](#r6-3)`.
+- **Another file:** a relative path plus the anchor —
+  `[§2.1 in <other_feature>](../<YY-MM-DD>-<other_feature>/<file_name>.md#s2-1)`. The link text
+  names the other spec, because the section number alone is ambiguous across specs (see
+  Spec-grounded features).
+- **Anchors are explicit and numbered, not auto-generated.** Put `<a id="s4-4"></a>` on the line
+  above the heading of §4.4, and `<a id="r6-3"></a>` at the start of requirement R6.3 (the id is
+  the number, lowercased, dots turned into dashes, `s` for a section, `r` for a requirement).
+  Heading slugs differ between renderers and break when a heading is reworded; a numbered
+  anchor stays put, and it is the only way to target a requirement that isn't a heading.
+  Every section or requirement that is referenced gets one; adding them to every numbered
+  heading is fine.
+- **When a section is renumbered, update its anchor and every link to it** — in this spec, in
+  other specs and in the plans (`grep -rn '#s4-4'`).
+- **Check before the written-spec review:** every link's file exists and contains its
+  `id="…"`. A link that resolves nowhere is a review finding.
+
+Code comments are the exception: they stay plain text, as Spec-grounded features shows.
+
 ## Designing the spec
 
 Design a feature with `/superpowers:brainstorming`, under the overrides in the precedence table.
@@ -89,7 +114,8 @@ depends on an answer still pending waits for a later round.
 Besides the question rounds, the architectural path has exactly two approval gates:
 
 1. approval of each design section during the dialogue;
-2. review of the written spec.
+2. review of the written spec — with its cross-references already links (see Cross-references
+   are links).
 
 Once the spec is approved, split it into phases (unless the spec already defines them), ask
 the review cadence (see Human review cadence) and start the first phase at STEP 0. The human
