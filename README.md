@@ -21,8 +21,7 @@ plugin's descriptions cost in *every* session; "on invoke" is paid only when a s
 | **`project-tooling`** | `run-app` | automatically | ~90 | ~3.4k |
 | | `check-updates-npm` | `/check-updates-npm` | ~80 | ~1.5k |
 | | `check-updates-uv` | `/check-updates-uv` | ~60 | ~650 |
-| | `handover` | `/handover` | ~50 | ~1.9k |
-| | `orchestrate` | `/orchestrate` | ~50 | ~1.7k (+ reads `handover`) |
+| | `orchestrate` | `/orchestrate` | ~30 | ~5.2k |
 | | `demo-mail-sink` | automatically | ~70 | ~1.7k |
 | **`database`** | `alembic` | automatically | ~80 | ~1.7k |
 | **`scaffold`** | `fastapi-nuxt-scaffold` | `/fastapi-nuxt-scaffold` | ~140 | ~5.3k |
@@ -110,8 +109,7 @@ drop it, or every unscoped run is denied twice. Its checks: `python3 -B dev-work
 | `demo-mail-sink` | Routes a throwaway demo, screenshot or end-to-end instance's outbound mail to a dependency-free local SMTP server (`smtp_sink.py`, copied into the app's `<back>/scripts/`) that accepts and discards everything — so seeding sends nothing real, yet the state apps store only after a successful send still appears. Runs in-process on a free port for the e2e instance, or as its own process (start/stop by port) for a hand-built demo instance. |
 | `check-updates-uv` | Outdated Python packages, with breaking-change notes and `uv sync` commands. |
 | `check-updates-npm` | Outdated npm packages, grouped by what must move together. |
-| `handover` | `/handover #N [#M…] [to <session>\|new] [work isolated\|main checkout]`: builds a self-contained brief (item text, code pointers, meeting-transcript quotes with timestamped links, the handover rules verbatim — including creating a tracker implementation task before any work — and the project's standing rules), starts a `claude --bg` session or messages an existing one, and records the handoff in the to-do tracker as `name` (`session ID`). Also covers receiving `done: #N`: verify the commits, move the item to Done, flag extra scope. |
-| `orchestrate` | `/orchestrate #x, #y` or `/orchestrate <session names>` creates an **orchestration group** of exactly those items: one isolated session per item, each branch merged into local `main` on `done: #N`, the screenshots each change needs collected. Once **all of that group's** items are merged, a subagent runs the full suites on `main`; failures go back to the owning sessions, which fix and commit them without waiting for your approval, and the coordinator waits for every fix of a round before one re-run, until green. Screenshots are retaken once, after green; then the group's sessions remove their worktrees and branches. Each call makes a separate group, so a later `/orchestrate a, b` never delays an earlier group's final run. Also `status`, `resume`, `add #n to <group>`. |
+| `orchestrate` | `/orchestrate #x[, #y] [to <session>] [batch] [work isolated\|main checkout]` or `/orchestrate <session names>` creates an **orchestration group** of exactly those items (one item is a group of one). Each item gets a self-contained brief (item text, code pointers, meeting-transcript quotes with timestamped links, the receiver rules verbatim — including creating a tracker implementation task before any work — and the project's standing rules), sent to a new `claude --bg` session or an existing one, working in its own worktree or the main checkout (the project's convention when not given). On `done: #N` (with its `Migrations:` and `Screenshots:` lines) the coordinator merges the branch into local `main` and applies its migrations to the main dev database. Once **all of that group's** items are merged, a subagent runs the full suites on `main`; failures go back to the owning sessions, which fix and commit them without waiting for your approval, and the coordinator waits for every fix of a round before one re-run, until green. Screenshots are retaken once, after green; then the group's sessions remove their worktrees and branches. Each call makes a separate group, so a later `/orchestrate a, b` never delays an earlier group's final run. Also `status`, `resume`, `add #n to <group>`, `done #N`. |
 
 `run-app` fires automatically — ask it to run, start or screenshot the app and it activates.
 `demo-mail-sink` fires when a demo or test instance is being built or run. The sink itself is copied into each app,
@@ -121,13 +119,13 @@ both the skill and the app's copy are present, and remind you how to add whichev
 It does start long-running dev servers, so the skill itself requires your go-ahead before
 launching anything.
 
-The two dependency checkers, `handover` and `orchestrate` are **slash-commands only** (`/check-updates-uv`,
-`/check-updates-npm`, `/handover`, `/orchestrate`) and never fire on their own.
+The two dependency checkers and `orchestrate` are **slash-commands only** (`/check-updates-uv`,
+`/check-updates-npm`, `/orchestrate`) and never fire on their own.
 
-`handover` and `orchestrate` are meant for the one session that keeps a project's to-do tracker and hands work to
-other sessions. Nothing project-specific is in them: the tracker path, its header's handover rules, the recording
+`orchestrate` is meant for the one session that keeps a project's to-do tracker and hands work to other sessions.
+Nothing project-specific is in it: the tracker path, its header's handover rules, the recording
 source, worktree setup, test-DB and port scheme, full-suite commands and the screenshot instance all come from the
-project's CLAUDE.md, local skills or memory, and the skills stop and ask when one is missing.
+project's CLAUDE.md, local skills or memory, and the skill stops and asks when one is missing.
 
 ### `database` — schema and migrations
 
