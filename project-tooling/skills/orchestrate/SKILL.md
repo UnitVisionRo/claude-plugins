@@ -68,6 +68,10 @@ its user, you merge it and re-run, and this loops until the group is green. The 
 for failures you found in those runs. A fix that needs new scope, a changed requirement or a product decision goes
 to the user. Merging stays limited to the orchestrated branches.
 
+**The screenshot commit runs without the user too.** Once a green group's screenshots are taken, commit them to
+`main` without asking (step 4b). The pre-approval covers **only** the screenshot files on the group's list; anything
+else the screenshot run changed goes to the user.
+
 # Before you start
 
 ## Project facts
@@ -295,6 +299,18 @@ screenshot collected for **this group**, including those added by fix replies, o
 instance, following its documented procedure, at main's current HEAD. Report per file: done, or why not. If
 another group is using the demo instance at that moment, wait for it; it has one DB and one set of ports.
 
+Then **review and commit them yourself, without asking the user** (see "Scope and authority"):
+
+1. **Review** every screenshot file: open it and check it shows the page or step its help page / manual step
+   describes, in the final state of the change, with demo data, no error, spinner, empty or half-loaded state, and
+   the project's usual size and framing.
+2. **Not OK** → send the subagent back to retake only those files, once, saying what is wrong. Still wrong, or
+   reported as not done → leave them uncommitted and tell the user which files and why.
+3. **OK** → in the main checkout (clean apart from the known untracked files and these screenshots, as in step 2.1;
+   copy the files there first if the run wrote them elsewhere), stage **only** the reviewed screenshot files on the
+   group's list, by path, and commit them on `main` following the project's commit-message rules. Never stage
+   anything else the run changed; report it to the user instead. Record the commit hash for the final report.
+
 # 5. Failures: one fix round at a time
 
 Loop on your own until the group is green; don't stop to ask the user between rounds (see "The fix loop runs
@@ -340,8 +356,8 @@ tracker keeps an orchestration only while it is in progress; no history afterwar
 The Done entries themselves stay: item, session `name` (`ID`), date, commits, merge hash.
 
 Then tell the user: the group, items merged (with hashes), the migrations applied to the main dev database,
-the tested commit and suite counts, the number of full-suite runs, screenshots done, anything left open, and any
-failure handed to another group.
+the tested commit and suite counts, the number of full-suite runs, screenshots done and their commit hash, anything
+left open, and any failure handed to another group.
 
 # The tracker note
 
